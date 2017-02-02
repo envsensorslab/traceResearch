@@ -20,8 +20,11 @@
 #include <SPI.h>
 #include <SD.h>
 #include <TimeLib.h>
+#include <Wire.h>
+#include "RTClib.h"
 
 File sampleDataTableFile;
+RTC_DS3231 rtc;
 
 char sampleDataTableName[] = "sampleTB.csv";
 char configFileName = "configFl.txt";
@@ -44,11 +47,19 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  //Since this is the setup routine, always set the RTC value
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+
   initPeripherals();  
   setupRoutine();
   
-  LogPrint(DATA, LOG_WARNING, "Hi therer");
-  LogPrint(SYSTEM, LOG_ERROR, "BYe there");
+  LogPrint(DATA, LOG_WARNING, "Log Test 1, Warning");
+  LogPrint(SYSTEM, LOG_ERROR, "Log Test 2, Error");
 }
 
 void loop() {
@@ -59,21 +70,22 @@ void initSDcard()
 {
   Serial.print("Initializing SD card...");
 
-  if (!SD.begin(10)) {
+  // CHange back to 10 for Pro mini
+  if (!SD.begin(53)) {
     Serial.println("initialization failed!");
     return;
   }
   Serial.println("initialization done.");
 
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
-  File exampleFile = SD.open("example.txt");
+  File exampleFile = SD.open("example.txt", FILE_WRITE);
   if (SD.exists("example.txt")) 
   {   
     // Remove the file once the data is loaded
     SD.remove("example.txt");
     if (SD.exists("example.txt")) 
     {
-      Serial.println("SD card init failed");
+      Serial.println("SD card init failed, couldn't remove file");
     }    
     else{
       Serial.println("SD card init succesfully");
@@ -81,7 +93,7 @@ void initSDcard()
   } 
   else 
   {
-    Serial.println("SD card init failed");
+    Serial.println("SD card init failed, couldn't open file");
   }
 }
 
@@ -98,11 +110,20 @@ void initEEPROM()
     }
 }
 
+void initRTC()
+{
+  Serial.print("RTC value equals: ");
+  String t ="";
+  timestamp(t);
+  Serial.println(t);
+}
+
 void initPeripherals()
 {
   initSDcard();
   initEEPROM();
-  loadConfigVars();
+  initRTC();
+  //loadConfigVars();
 }
 
 
@@ -190,7 +211,6 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
   }
   if (logFile)
   {
-    Serial.println("File exists");
     String level;
     if (errorLevel == LOG_ERROR)
     {
@@ -198,21 +218,29 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
     }
     else if (errorLevel == LOG_WARNING)
     {
-      Serial.println("Warning");
       level="Warning";
     }
     else 
     {
-      Serial.println("Debug");
       level="Debug";
     }
     
     // Switch to reading from the RTC once it is integrated
-    time_t t = now();
+    String t = "";
+    timestamp(t);
     String myStr = t + ", " + level + ", "+ logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
   }
+}
+
+void timestamp(String &timeFormat)
+{
+    DateTime now = rtc.now();
+    
+    timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
+    (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
+  
 }
 
