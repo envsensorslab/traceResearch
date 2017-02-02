@@ -4,6 +4,7 @@
 #include <TimeLib.h>
 #include <Wire.h>
 #include <SD.h>
+#include <SPI.h>
 
 
 int address = 0;
@@ -29,6 +30,7 @@ char sampleDataTableName[] = "sampleTB.csv";
 time_t system_start_time = 500;
 int number_syringes = 250;
 int curr_syringe = 0;
+char data_array [250];
 #define FLUSH_EEPROM_ADDRESS 10
 #define SYRINGE_ADDRESS 200
 
@@ -56,9 +58,11 @@ void syringeIteration(){
   
   int i=0;
   int counter = 0;
-  File sampleDataTableFile = SD.open(sampleDataTableName);
+  File  logFile;
+  logFile = SD.open("data.txt", FILE_READ);
+  
   // If we were able to open up the files
-  if (sampleDataTableFile)
+  if (logFile)
   {
     if (counter >= number_syringes){
       return 0; 
@@ -84,13 +88,14 @@ void syringeIteration(){
   
       //get to row start
       //read in row start
-      // readVals()
+      //readVals()
       //read from sensors
       // SYRINGE_ADDRESS = startSryinges * 6(counter)
-      EEPROM.write(SYRINGE_ADDRESS, depth);
-     
-    
-      EEPROM.write(SYRINGE_ADDRESS + 4, collection_time);
+
+      SD.read(2);
+      EEPROM.write(SYRINGE_ADDRESS, x);
+      SD.read(4);
+      EEPROM.write(SYRINGE_ADDRESS + 4, y);
       
       SYRINGE_ADDRESS == SYRINGE_ADDRESS + SIZE_OF_SYRINGE;
     
@@ -99,6 +104,8 @@ void syringeIteration(){
     }
   
   }
+
+  logFile.close("data.txt");
 }
 
 
