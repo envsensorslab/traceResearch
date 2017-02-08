@@ -19,19 +19,24 @@
  */
 #include <SPI.h>
 #include <SD.h>
-#include <TimeLib.h>
-#include <Wire.h>
 #include "RTClib.h"
+#include <EEPROM.h>
 
 File sampleDataTableFile;
 RTC_DS3231 rtc;
 
 char sampleDataTableName[] = "sampleTB.csv";
-char configFileName = "configFl.txt";
+char configFileName[] = "configFl.txt";
+
+#define system_start_time_address 0
+#define number_syringes_address 4
+#define syring_table_start_address 6
+#define forward_flush_time_address 8
 
 enum error_level {
   LOG_ERROR,
   LOG_WARNING,
+  LOG_INFO,
   LOG_DEBUG,
 };
 
@@ -76,7 +81,7 @@ void initSDcard()
     return;
   }
   Serial.println("initialization done.");
-
+/*
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
   File exampleFile = SD.open("example.txt", FILE_WRITE);
   if (SD.exists("example.txt")) 
@@ -95,18 +100,54 @@ void initSDcard()
   {
     Serial.println("SD card init failed, couldn't open file");
   }
+  if(exampleFile)
+  {
+    exampleFile.close();
+  }*/
 }
 
 void initEEPROM()
 {
+   Serial.println("start");
   // Open the configuration file  
-    File configFile = SD.open(configFileName);
-    if(configFileName)
-    {         
-      // Load forward flush time
-      // Load reverse flush time
-
-      // Load data to EEPROM
+    if (SD.exists(configFileName))
+    {
+      File configFile = SD.open(configFileName, FILE_READ);
+      if(configFile)
+      {       
+        int counter = 0;
+        
+        String line;
+        while(configFile.available()) 
+        {     
+          line = configFile.read();
+          Serial.println(line);
+          // Load forward flush time
+          if (counter == 0)
+          {
+           // EEPROM.put(system_start_time_address, line);
+          }
+          else if (counter == 1)
+          {
+            //EEPROM.put(syring_table_start_address, line);
+          }
+           counter++;
+          // Load reverse flush time
+          
+    
+          // Load data to EEPROM
+        }
+        configFile.close();
+      }
+    }
+    else
+    {
+      File configFile = SD.open(configFileName, FILE_READ);
+      if(configFile)
+      {
+        configFile.close();
+      }
+      Serial.println("Could not find config file");
     }
 }
 
@@ -121,50 +162,49 @@ void initRTC()
 void initPeripherals()
 {
   initSDcard();
-  initEEPROM();
-  initRTC();
+  initRTC();  
+  //initEEPROM();
   //loadConfigVars();
 }
 
 
 void setupRoutine()
 {
-  
+  Serial.println("starting routine");
   int num_load_syringes = 1;
   int total_num_syringes = 1;
   if(SD.exists(sampleDataTableName))
   {
-    File sampleDataTableFile = SD.open(sampleDataTableName);
+    sampleDataTableFile = SD.open(sampleDataTableName);
     if (sampleDataTableFile)
     {
       
-    int x,y;
-    // Read in each value
-    while (readVals(&x, &y)) 
-    {
-      Serial.print("x: ");
-      Serial.println(x);
-      Serial.print("y: ");
-      Serial.println(y);
-      Serial.println();
-
-      // Only want to load 100 syringe data points, keep looping to see total number of syringes though
-      if (num_load_syringes <= 100)
-      {        
-        //Store value in EEPROM
-        Serial.print("Loading syring #"); Serial.println(num_load_syringes);
-        num_load_syringes++;
+      int x,y;
+      // Read in each value
+      while (readVals(&x, &y)) 
+      {
+        Serial.print("x: ");
+        Serial.println(x);
+        Serial.print("y: ");
+        Serial.println(y);
+        Serial.println();
+  
+        // Only want to load 100 syringe data points, keep looping to see total number of syringes though
+        if (num_load_syringes <= 100)
+        {        
+          //Store value in EEPROM
+          Serial.print("Loading syring #"); Serial.println(num_load_syringes);
+          num_load_syringes++;
+        }
+        total_num_syringes++;      
       }
-      total_num_syringes++;      
-    }
       //Write total num and load num to EEPROM
-      
       sampleDataTableFile.close();
     } else {
       Serial.println("Error opening sampleFile.csv");
     }
   } else {
-    Serial.println("File does not exist");
+    Serial.println("Sample Data Table does not exist");
   }
 }
 
@@ -219,6 +259,10 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
     else if (errorLevel == LOG_WARNING)
     {
       level="Warning";
+    }
+    else if (errorLevel == LOG_INFO)
+    {
+      level="Info";
     }
     else 
     {
