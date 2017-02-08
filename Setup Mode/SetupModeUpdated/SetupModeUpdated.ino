@@ -23,6 +23,7 @@
 #include <EEPROM.h>
 
 File sampleDataTableFile;
+File configFile;
 RTC_DS3231 rtc;
 
 char sampleDataTableName[] = "sampleTB.csv";
@@ -108,31 +109,36 @@ void initSDcard()
 
 void initEEPROM()
 {
-   Serial.println("start");
   // Open the configuration file  
     if (SD.exists(configFileName))
     {
-      File configFile = SD.open(configFileName, FILE_READ);
+      configFile = SD.open(configFileName, FILE_READ);
       if(configFile)
       {       
-        int counter = 0;
-        
-        String line;
+        int counter = 0;        
+        char line[40];
         while(configFile.available()) 
         {     
-          line = configFile.read();
-          Serial.println(line);
+          readLine(configFile,line, sizeof(line));
+          String toString = String(line);
+          int value = toString.toInt();
+          Serial.println(value);
+          
           // Load forward flush time
           if (counter == 0)
           {
-           // EEPROM.put(system_start_time_address, line);
+            //EEPROM.put(system_start_time_address, value);
           }
           else if (counter == 1)
           {
-            //EEPROM.put(syring_table_start_address, line);
+            //EEPROM.put(syring_table_start_address, value);
+          }
+          else if (counter == 2)
+          {            
+            // Load reverse flush time
+            EEPROM.put(forward_flush_time_address, value);
           }
            counter++;
-          // Load reverse flush time
           
     
           // Load data to EEPROM
@@ -163,7 +169,7 @@ void initPeripherals()
 {
   initSDcard();
   initRTC();  
-  //initEEPROM();
+  initEEPROM();
   //loadConfigVars();
 }
 
@@ -199,6 +205,7 @@ void setupRoutine()
         total_num_syringes++;      
       }
       //Write total num and load num to EEPROM
+      EEPROM.put(number_syringes_address, total_num_syringes);
       sampleDataTableFile.close();
     } else {
       Serial.println("Error opening sampleFile.csv");
