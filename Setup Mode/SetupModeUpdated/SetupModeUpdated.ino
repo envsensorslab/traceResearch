@@ -29,10 +29,16 @@ RTC_DS3231 rtc;
 char sampleDataTableName[] = "sampleTB.csv";
 char configFileName[] = "configFl.txt";
 
+# define SIZE_OF_SYRINGE 6
 #define system_start_time_address 0
 #define number_syringes_address 4
 #define syring_table_start_address 6
 #define forward_flush_time_address 8
+
+int curr_syringe = 0;
+int number_syringes = 0;
+int syringe_table_start = 0;
+
 
 enum error_level {
   LOG_ERROR,
@@ -62,7 +68,11 @@ void setup() {
 
 
   initPeripherals();  
-  setupRoutine();
+  //setupRoutine();
+  curr_syringe = 0;
+  syringeIteration();
+  curr_syringe = 50;
+  syringeIteration();
   
   LogPrint(DATA, LOG_WARNING, "Log Test 1, Warning");
   LogPrint(SYSTEM, LOG_ERROR, "Log Test 2, Error");
@@ -82,7 +92,7 @@ void initSDcard()
     return;
   }
   Serial.println("initialization done.");
-/*
+
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
   File exampleFile = SD.open("example.txt", FILE_WRITE);
   if (SD.exists("example.txt")) 
@@ -104,7 +114,7 @@ void initSDcard()
   if(exampleFile)
   {
     exampleFile.close();
-  }*/
+  }
 }
 
 void initEEPROM()
@@ -127,13 +137,19 @@ void initEEPROM()
           // Load forward flush time
           if (counter == 0)
           {
-            //EEPROM.put(system_start_time_address, value);
+            EEPROM.put(system_start_time_address, value);
           }
           else if (counter == 1)
           {
-            //EEPROM.put(syring_table_start_address, value);
+            EEPROM.put(number_syringes_address, value);
+            number_syringes = value;
           }
           else if (counter == 2)
+          {
+            EEPROM.put(syring_table_start_address, value);
+            syringe_table_start = value;
+          }
+          else if (counter == 3)
           {            
             // Load reverse flush time
             EEPROM.put(forward_flush_time_address, value);
@@ -171,6 +187,66 @@ void initPeripherals()
   initRTC();  
   initEEPROM();
   //loadConfigVars();
+}
+
+
+void syringeIteration(){
+  //upper lower argument
+  
+  int i=0;
+  int counter = 0;
+  if(SD.exists(sampleDataTableName))
+  {
+    sampleDataTableFile = SD.open(sampleDataTableName);
+    if (sampleDataTableFile)
+    { 
+      Serial.println("here");
+      if (curr_syringe >= number_syringes){
+        return; 
+      }
+      
+      int start;
+      int finish;
+      
+      if ( curr_syringe%100 < 50 )
+      {
+        //in upper
+         start = 0;
+         finish = 49;
+      }
+      else
+      {
+        //in lower
+         start = 50;
+         finish = 99;
+      }
+
+      // Start iterating through until the line we want to start recording
+      while (i<curr_syringe){
+      int a=0;
+      int b=0;
+      Serial.println("while loop");
+        readVals(a,b);  
+        i++;      
+      }
+      // Once we are at the right spot start recording to the EEPROM
+      for (int i= start; i<=finish; i++){
+        Serial.println(i);
+        int x=0;
+        int y=0;    
+        readVals(&x,&y);        
+        Serial.println(x);
+        Serial.println(y);
+        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), x);
+        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
+        if(!sampleDataTableFile.available())
+        {
+          break;
+        }
+      }
+      sampleDataTableFile.close();
+    }
+  }
 }
 
 
@@ -294,4 +370,9 @@ void timestamp(String &timeFormat)
     (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
   
 }
+
+
+
+
+
 
