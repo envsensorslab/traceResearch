@@ -21,6 +21,7 @@
 #include <SD.h>
 #include "RTClib.h"
 #include <EEPROM.h>
+#include <time.h>
 
 File sampleDataTableFile;
 File configFile;
@@ -32,8 +33,9 @@ char configFileName[] = "configFl.txt";
 # define SIZE_OF_SYRINGE 6
 #define system_start_time_address 0
 #define number_syringes_address 4
-#define syring_table_start_address 6
-#define forward_flush_time_address 8
+#define curr_syringe_address 6
+#define syring_table_start_address 8
+#define forward_flush_time_address 10
 
 int curr_syringe = 0;
 int number_syringes = 0;
@@ -72,6 +74,7 @@ void setup() {
   curr_syringe = 0;
   syringeIteration();
   curr_syringe = 50;
+  number_syringes = 70;
   syringeIteration();
   
   LogPrint(DATA, LOG_WARNING, "Log Test 1, Warning");
@@ -132,27 +135,41 @@ void initEEPROM()
           readLine(configFile,line, sizeof(line));
           String toString = String(line);
           int value = toString.toInt();
-          Serial.println(value);
-          
+          String output = "";
           // Load forward flush time
           if (counter == 0)
           {
             EEPROM.put(system_start_time_address, value);
+            output = "System state time value: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 1)
           {
             EEPROM.put(number_syringes_address, value);
             number_syringes = value;
+            output = "Num of Syringes: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 2)
           {
-            EEPROM.put(syring_table_start_address, value);
-            syringe_table_start = value;
+            EEPROM.put(curr_syringe_address, value);
+            output = "Curr Syringe set to : " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 3)
+          {
+            EEPROM.put(syring_table_start_address, value);
+            syringe_table_start = value;
+            output = "Syringe table start address: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
+          }
+          else if (counter == 4)
           {            
             // Load reverse flush time
             EEPROM.put(forward_flush_time_address, value);
+            output = "Forward flush time set to: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
+            
           }
            counter++;
           
@@ -189,11 +206,9 @@ void initPeripherals()
   //loadConfigVars();
 }
 
-
-void syringeIteration(){
-  //upper lower argument
-  
-  int i=0;
+// Loads the upper and lower half dependent on where the current syringe value is
+void syringeIteration(){  
+  LogPrint(SYSTEM, LOG_INFO, "Starting syringeIteration");
   int counter = 0;
   if(SD.exists(sampleDataTableName))
   {
@@ -207,7 +222,8 @@ void syringeIteration(){
       
       int start;
       int finish;
-      
+      // Determines whether it is in the upper or lower section by where
+      // the current syringe is
       if ( curr_syringe%100 < 50 )
       {
         //in upper
@@ -222,23 +238,36 @@ void syringeIteration(){
       }
 
       // Start iterating through until the line we want to start recording
+      int i=0;
       while (i<curr_syringe){
-      int a=0;
-      int b=0;
-      Serial.println("while loop");
-        readVals(a,b);  
+        long int a=0;
+        int b=0;
+        Serial.println("while loop");
+        readVals(&a,&b);  
         i++;      
       }
       // Once we are at the right spot start recording to the EEPROM
-      for (int i= start; i<=finish; i++){
-        Serial.println(i);
-        int x=0;
-        int y=0;    
-        readVals(&x,&y);        
-        Serial.println(x);
+      for (int i= start; i<=finish; i++)
+      {
+        long int x=0;
+        int y=0;        
+        readVals(&x,&y);            
+        time_t samTime = x;
+        
+        Serial.println(i);        
+        Serial.print("x: ");
+        Serial.println(samTime);
+        Serial.print("y: ");
         Serial.println(y);
-        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), x);
-        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
+        Serial.print("Address = :");
+        Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
+        Serial.println();
+
+        // Put the csv values into the EEPROM
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
+
+        //If there is no more data to read in then also quit function
         if(!sampleDataTableFile.available())
         {
           break;
@@ -246,52 +275,16 @@ void syringeIteration(){
       }
       sampleDataTableFile.close();
     }
-  }
-}
-
-
-void setupRoutine()
-{
-  Serial.println("starting routine");
-  int num_load_syringes = 1;
-  int total_num_syringes = 1;
-  if(SD.exists(sampleDataTableName))
-  {
-    sampleDataTableFile = SD.open(sampleDataTableName);
-    if (sampleDataTableFile)
+    else
     {
-      
-      int x,y;
-      // Read in each value
-      while (readVals(&x, &y)) 
-      {
-        Serial.print("x: ");
-        Serial.println(x);
-        Serial.print("y: ");
-        Serial.println(y);
-        Serial.println();
-  
-        // Only want to load 100 syringe data points, keep looping to see total number of syringes though
-        if (num_load_syringes <= 100)
-        {        
-          //Store value in EEPROM
-          Serial.print("Loading syring #"); Serial.println(num_load_syringes);
-          num_load_syringes++;
-        }
-        total_num_syringes++;      
-      }
-      //Write total num and load num to EEPROM
-      EEPROM.put(number_syringes_address, total_num_syringes);
-      sampleDataTableFile.close();
-    } else {
-      Serial.println("Error opening sampleFile.csv");
+      LogPrint(SYSTEM, LOG_ERROR, "Could not open Sample Data File");
     }
-  } else {
-    Serial.println("Sample Data Table does not exist");
+  }
+  else
+  {
+    LogPrint(SYSTEM, LOG_ERROR, "Sample Data table File does not exist");
   }
 }
-
-
 
 bool readLine(File &f, char* line, size_t maxLen) {
   for (size_t n = 0; n < maxLen; n++) {
@@ -306,7 +299,7 @@ bool readLine(File &f, char* line, size_t maxLen) {
   return false; // line too long
 }
 
-bool readVals(int* v1, int* v2) {
+bool readVals(long int* v1, int* v2) {
   char line[40], *ptr, *str;
   if (!readLine(sampleDataTableFile, line, sizeof(line))) {
     return false;  // EOF or too long
