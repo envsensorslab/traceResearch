@@ -63,8 +63,10 @@ void main() {
       // Log that state 3 started
       // record the data
       // start the sample sequence
+      // void startSampleSequence()
       // when sampling is done
       // Increment the curr syringe
+      // void incrementSyringe()
       // Log setting state to 1
       // set state back to 1
 
