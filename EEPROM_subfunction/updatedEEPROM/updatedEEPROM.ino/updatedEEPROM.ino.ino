@@ -1,8 +1,5 @@
 #include <EEPROM.h>
 #include <DS1307RTC.h>
-#include <Time.h>
-#include <TimeLib.h>
-#include <Wire.h>
 #include <SD.h>
 #include <SPI.h>
 
@@ -35,7 +32,10 @@ char data_array [250];
 #define SYRINGE_ADDRESS 200
 
 void setup(){
-   EEPROM_setup();
+   EEPROMsetup();
+
+   syringeIteration();
+   
      
 }
 
@@ -43,7 +43,7 @@ void loop(){
   
 }
 
-void EEPROM_setup(){
+void EEPROMsetup(){
   EEPROM.write(address, system_start_time);
   address = address + 4;
   EEPROM.write(address, number_syringes);
@@ -59,19 +59,19 @@ void syringeIteration(){
   int i=0;
   int counter = 0;
   File  logFile;
-  logFile = SD.open("data.txt", FILE_READ);
+  logFile = SD.open("sampleDataTableFile", FILE_READ);
   
   // If we were able to open up the files
   if (logFile)
   {
-    if (counter >= number_syringes){
+    if (curr_syringe >= number_syringes){
       return 0; 
     }
     
     int start;
     int finish;
     
-    if ( curr_sryinge < 50 )
+    if ( curr_sryinge%100 < 50 )
     {
       //in upper
        start = 0;
@@ -83,29 +83,31 @@ void syringeIteration(){
        start = 50;
        finish = 99;
     }
-   
+    while (i<curr_syringe){
+    int a=0;
+    int b=0;
+      readVals(a,b);
+      
+    }
     for (int i= start; i<=finish; i++){
-  
+      int x=0;
+      int y=0;
       //get to row start
       //read in row start
       //readVals()
       //read from sensors
       // SYRINGE_ADDRESS = startSryinges * 6(counter)
-
-      SD.read(2);
-      EEPROM.write(SYRINGE_ADDRESS, x);
-      SD.read(4);
-      EEPROM.write(SYRINGE_ADDRESS + 4, y);
+    
+   
+      readVals(x,y);
       
-      SYRINGE_ADDRESS == SYRINGE_ADDRESS + SIZE_OF_SYRINGE;
-    
-      counter++;
-    
-    }
-  
+      EEPROM.write(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE), x);
+      EEPROM.write(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE) + 4, y);
+ 
+  }
   }
 
-  logFile.close("data.txt");
+  logFile.close();
 }
 
 
