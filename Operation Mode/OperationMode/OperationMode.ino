@@ -24,9 +24,17 @@ enum module {
   STATE,
 };
 
+//Macros
+#define SIZE_OF_SYRINGE 6
+#define system_start_time_address 0
+#define number_syringes_address 4
+#define curr_syringe_address 6
+#define syring_table_start_address 8
+#define forward_flush_time_address 10
+
 //Global Variables
-DateTime system_start = 0;
-DateTime curr_sample_time = 0;
+time_t system_start = 0;
+time_t curr_sample_time = 0;
 int curr_pressure_level = 0;
 int curr_syringe = 0;
 int num_syringes = 0;
@@ -34,8 +42,12 @@ state curr_state= STATE1;
 RTC_DS3231 rtc;
 
 void setup() {
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
   // put your setup code here, to run once:
-
+  Serial.println("hi");
   ///Set up peripherals + also variables
   initPeripherals(); 
 }
@@ -43,15 +55,19 @@ void setup() {
 void loop() {
 
   DateTime now = rtc.now();
+  time_t nowT = now.unixtime();
+  Serial.println(nowT);
+  Serial.println(system_start);
   //Wait to hit the system start time
-  if(rtc.now() > system_start.now())
+  if(nowT > system_start)
   {
     // Log start main
        // LOGRPINT(...)
        // Start true main
-       // main()
-    LogPrint(SYSTEM, LOG_INFO, "Start time hit");
-    main();
+       // mainLoop()
+    //LogPrint(SYSTEM, LOG_INFO, "Start time hit");
+    Serial.println("Start time hit");
+    //mainLoop();
   }
   else 
   {    
@@ -61,14 +77,15 @@ void loop() {
       //LOGPRINT(...)
       // set to sleep
       // sleep(system_start - time.now)
-    LogPrint(SYSTEM, LOG_INFO, "Start not hit, sleeping");
+    //LogPrint(SYSTEM, LOG_INFO, "Start not hit, sleeping");
+    Serial.println("Start not hit, sleeping");
     //Set timer for sleep
        
   }
       
 }
 
-int main() {
+void mainLoop() {
 
   
   // set state to 1
@@ -80,30 +97,31 @@ int main() {
     if (curr_state == STATE3)
     {
         // Log that state 3 started
-        LOGPRINT(STATE, LOG_INFO, "State 3 started");
+        LogPrint(STATE, LOG_INFO, "State 3 started");
         // record the data
         // start the sample sequence
-        startSampleSequence();
+        //startSampleSequence();
         // void startSampleSequence()
         // when sampling is done
         // Increment the curr syringe
-        incrementSyringe();
+        //incrementSyringe();
         // void incrementSyringe()
         // Log setting state to 1
-        LOGPRINT(STATE, LOG_INFO, "Transitioning to State 1");
+        LogPrint(STATE, LOG_INFO, "Transitioning to State 1");
         // set state back to 1
-        curr_state = STATE1
+        curr_state = STATE1;
     }
   
     // if state is 2
     if(curr_state == STATE2)
     {
         // Log state 2 started
-        LOGPRINT(STATE, LOG_INFO, "State 2 started");
+        LogPrint(STATE, LOG_INFO, "State 2 started");
         // read time from RTC to sync clock
         DateTime now = rtc.now();
+        time_t nowT = now.unixtime();
         // if curr_time is not past sample time
-        //if (now > curr_sample_time)
+        if (nowT > curr_sample_time)
         {
           // sleep until currTime
           // Sleep(until curr_sample_time);
@@ -116,13 +134,13 @@ int main() {
           {
             if (pressureValue == curr_pressure_level)
             {
-              LOGPRINT(STATE, LOG_INFO, "Transitioning to state3");
+              LogPrint(STATE, LOG_INFO, "Transitioning to state3");
               curr_state=STATE3;
             }
             else
             {
               //sleep for a couple of seconds
-              LOGPRINT(SYSTEM, LOG_INFO, "Sleeping to poll the sensor again");
+              LogPrint(SYSTEM, LOG_INFO, "Sleeping to poll the sensor again");
             }          
           }
         }
@@ -132,23 +150,23 @@ int main() {
     if(curr_state == STATE1)
     {
         // Log state 1 started
-        LOGPRINT(STATE, LOG_INFO, "State 1 started");
+        LogPrint(STATE, LOG_INFO, "State 1 started");
         // Sync Clock with RTC
         DateTime now = rtc.now();
         // Set arudino clock equal to rtc clock
         // set the pressure to check for and time to check for
         //curr_pressure_level = currgetSyringePressue();
         // Log setting state to 2
-        LOGPRINT(STATE, LOG_INFO, "Transitioning to State 2");
+        LogPrint(STATE, LOG_INFO, "Transitioning to State 2");
         // Set state to 2
         curr_state = STATE2;
     }
   }
-  return 0;
 }
 
 void initPeripherals()
 {
+  Serial.println("Starting");
   initSDcard();
   initRTC();  
   loadConfigVars();
@@ -156,14 +174,22 @@ void initPeripherals()
 
 void loadConfigVars()
 {
+  String output = "";
+  
   //load system start from EEPROM
-  // system_start = EEPROM.READ();
+  EEPROM.get(system_start_time_address, system_start);
+  output = "System start time is: " + (String)system_start;
+  Serial.println(output);
 
   //Load current syringe
-  // curr_syringe = EEPROM.READ()
+  EEPROM.get(curr_syringe_address, curr_syringe);
+  output = "Current Syringe: " + (String)curr_syringe;
+  Serial.println(output);
 
   //Load num sryinges
-  // num_sryinges = EEPROM.READ()
+  EEPROM.get(number_syringes_address, num_syringes);
+  output = "Number of syringes: " + (String)num_syringes;
+  Serial.println(output);
 }
 
 void initRTC()
@@ -229,7 +255,7 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
   }
   else if (moduleName == STATE)
   {
-    logFIle = SD.open("state.txt", FILE_WRITE)
+    logFile = SD.open("state.txt", FILE_WRITE);
   }
   if (logFile)
   {
@@ -264,6 +290,7 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
 void timestamp(String &timeFormat)
 {
     DateTime now = rtc.now();
+    Serial.println(now.unixtime());
     
     timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
     (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();

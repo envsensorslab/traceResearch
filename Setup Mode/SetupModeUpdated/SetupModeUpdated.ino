@@ -30,7 +30,7 @@ RTC_DS3231 rtc;
 char sampleDataTableName[] = "sampleTB.csv";
 char configFileName[] = "configFl.txt";
 
-# define SIZE_OF_SYRINGE 6
+#define SIZE_OF_SYRINGE 6
 #define system_start_time_address 0
 #define number_syringes_address 4
 #define curr_syringe_address 6
@@ -60,13 +60,6 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-
-  if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
-    while (1);
-  }
-  //Since this is the setup routine, always set the RTC value
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
 
   initPeripherals();  
@@ -134,12 +127,13 @@ void initEEPROM()
         {     
           readLine(configFile,line, sizeof(line));
           String toString = String(line);
-          int value = toString.toInt();
+          //Value is long int because time_t is long int
+          long int value = toString.toInt();
           String output = "";
           // Load forward flush time
           if (counter == 0)
           {
-            EEPROM.put(system_start_time_address, value);
+            EEPROM.put(system_start_time_address, (time_t)value);
             output = "System state time value: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
@@ -192,6 +186,14 @@ void initEEPROM()
 
 void initRTC()
 {
+  
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  //Since this is the setup routine, always set the RTC value
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
   Serial.print("RTC value equals: ");
   String t ="";
   timestamp(t);
