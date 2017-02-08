@@ -44,9 +44,9 @@ void loop(){
 }
 
 void EEPROMsetup(){
-  EEPROM.write(address, system_start_time);
+  EEPROM.put(address, system_start_time);
   address = address + 4;
-  EEPROM.write(address, number_syringes);
+  EEPROM.put(address, number_syringes);
   }
 
 //need to figure out how to advance to next address based on size of these variables
@@ -101,8 +101,8 @@ void syringeIteration(){
    
       readVals(x,y);
       
-      EEPROM.write(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE), x);
-      EEPROM.write(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE) + 4, y);
+      EEPROM.put(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE), x);
+      EEPROM.put(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE) + 4, y);
  
   }
   }
