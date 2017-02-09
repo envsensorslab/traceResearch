@@ -63,7 +63,6 @@ void setup() {
 
 
   initPeripherals();  
-  //setupRoutine();
   curr_syringe = 0;
   syringeIteration();
   curr_syringe = 50;
@@ -132,20 +131,20 @@ void initEEPROM()
           // Load forward flush time
           if (counter == 0)
           {
-            //EEPROM.put(system_start_time_address, (time_t)value);
+            EEPROM.put(system_start_time_address, (time_t)value);
             output = "System state time value: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 1)
           {
-            //EEPROM.put(number_syringes_address, value);
+            EEPROM.put(number_syringes_address, value);
             number_syringes = value;
             output = "Num of Syringes: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 2)
           {
-            //EEPROM.put(curr_syringe_address, value);
+            EEPROM.put(curr_syringe_address, value);
             output = "Curr Syringe set to : " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
@@ -159,7 +158,7 @@ void initEEPROM()
           else if (counter == 4)
           {            
             // Load reverse flush time
-            //EEPROM.put(forward_flush_time_address, value);
+            EEPROM.put(forward_flush_time_address, value);
             output = "Forward flush time set to: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
             
@@ -204,7 +203,6 @@ void initPeripherals()
   initSDcard();
   initRTC();  
   initEEPROM();
-  //loadConfigVars();
 }
 
 // Loads the upper and lower half dependent on where the current syringe value is
@@ -276,8 +274,8 @@ void syringeIteration(){
         Serial.println();
 
         // Put the csv values into the EEPROM
-        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
-        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
 
         
       }
