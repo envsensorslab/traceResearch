@@ -64,9 +64,9 @@ void setup() {
 
   initPeripherals();  
   //setupRoutine();
-  curr_syringe = 0;
+  curr_syringe = -1;
   syringeIteration();
-  curr_syringe = 50;
+  curr_syringe = 0;
   number_syringes = 70;
   syringeIteration();
   
@@ -229,14 +229,14 @@ void syringeIteration(){
       if ( curr_syringe%100 < 50 )
       {
         //in upper
-         start = 0;
-         finish = 49;
+         start = 50;
+         finish = 99;
       }
       else
       {
         //in lower
-         start = 50;
-         finish = 99;
+         start = 0;
+         finish = 49;
       }
 
       // Start iterating through until the line we want to start recording
