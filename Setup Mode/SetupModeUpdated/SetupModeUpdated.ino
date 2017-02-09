@@ -64,10 +64,9 @@ void setup() {
 
   initPeripherals();  
   //setupRoutine();
-  curr_syringe = -1;
-  syringeIteration();
   curr_syringe = 0;
-  number_syringes = 70;
+  syringeIteration();
+  curr_syringe = 50;
   syringeIteration();
   
   LogPrint(DATA, LOG_WARNING, "Log Test 1, Warning");
@@ -133,26 +132,26 @@ void initEEPROM()
           // Load forward flush time
           if (counter == 0)
           {
-            EEPROM.put(system_start_time_address, (time_t)value);
+            //EEPROM.put(system_start_time_address, (time_t)value);
             output = "System state time value: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 1)
           {
-            EEPROM.put(number_syringes_address, value);
+            //EEPROM.put(number_syringes_address, value);
             number_syringes = value;
             output = "Num of Syringes: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 2)
           {
-            EEPROM.put(curr_syringe_address, value);
+            //EEPROM.put(curr_syringe_address, value);
             output = "Curr Syringe set to : " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 3)
           {
-            EEPROM.put(syring_table_start_address, value);
+            //EEPROM.put(syring_table_start_address, value);
             syringe_table_start = value;
             output = "Syringe table start address: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
@@ -160,7 +159,7 @@ void initEEPROM()
           else if (counter == 4)
           {            
             // Load reverse flush time
-            EEPROM.put(forward_flush_time_address, value);
+            //EEPROM.put(forward_flush_time_address, value);
             output = "Forward flush time set to: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
             
@@ -226,17 +225,21 @@ void syringeIteration(){
       int finish;
       // Determines whether it is in the upper or lower section by where
       // the current syringe is
-      if ( curr_syringe%100 < 50 )
+      // Functionality: When the syringe hits spot 0, it will populate it's current section
+      // AKA when current syringe hits 100, it will populate the EEPROM with data from 100-149
+      Serial.println(curr_syringe%100);
+     
+      if ( curr_syringe%100 < 50)
       {
         //in upper
-         start = 50;
-         finish = 99;
+         start = 0;
+         finish = 49;
       }
       else
       {
         //in lower
-         start = 0;
-         finish = 49;
+         start = 50;
+         finish = 99;
       }
 
       // Start iterating through until the line we want to start recording
@@ -251,6 +254,13 @@ void syringeIteration(){
       // Once we are at the right spot start recording to the EEPROM
       for (int i= start; i<=finish; i++)
       {
+
+        //If there is no more data to read in then also quit function
+        if(!sampleDataTableFile.available())
+        {
+          break;
+        }
+        
         long int x=0;
         int y=0;        
         readVals(&x,&y);            
@@ -266,14 +276,10 @@ void syringeIteration(){
         Serial.println();
 
         // Put the csv values into the EEPROM
-        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
-        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
+        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
+        //EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + 4, y);
 
-        //If there is no more data to read in then also quit function
-        if(!sampleDataTableFile.available())
-        {
-          break;
-        }
+        
       }
       sampleDataTableFile.close();
     }
