@@ -24,11 +24,7 @@
 #include <time.h>
 
 File sampleDataTableFile;
-File configFile;
 RTC_DS3231 rtc;
-
-char sampleDataTableName[] = "sampleTB.csv";
-char configFileName[] = "configFl.txt";
 
 #define SIZE_OF_SYRINGE 6
 #define system_start_time_address 0
@@ -78,14 +74,14 @@ void loop() {
 
 void initSDcard()
 {
-  Serial.print("Initializing SD card...");
+  Serial.print(F("Initializing SD card..."));
 
   // CHange back to 10 for Pro mini
   if (!SD.begin(53)) {
-    Serial.println("initialization failed!");
+    Serial.println(F("initialization failed!"));
     return;
   }
-  Serial.println("initialization done.");
+  Serial.println(F("initialization done."));
 
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
   File exampleFile = SD.open("example.txt", FILE_WRITE);
@@ -95,15 +91,15 @@ void initSDcard()
     SD.remove("example.txt");
     if (SD.exists("example.txt")) 
     {
-      Serial.println("SD card init failed, couldn't remove file");
+      Serial.println(F("SD card init failed, couldn't remove file"));
     }    
     else{
-      Serial.println("SD card init succesfully");
+      Serial.println(F("SD card init succesfully"));
     }
   } 
   else 
   {
-    Serial.println("SD card init failed, couldn't open file");
+    Serial.println(F("SD card init failed, couldn't open file"));
   }
   if(exampleFile)
   {
@@ -114,13 +110,14 @@ void initSDcard()
 void initEEPROM()
 {
   // Open the configuration file  
+    char configFileName[] = "configFl.txt";
     if (SD.exists(configFileName))
     {
-      configFile = SD.open(configFileName, FILE_READ);
+      File configFile = SD.open(configFileName, FILE_READ);
       if(configFile)
       {       
         int counter = 0;        
-        char line[40];
+        char line[20];
         while(configFile.available()) 
         {     
           readLine(configFile,line, sizeof(line));
@@ -132,34 +129,34 @@ void initEEPROM()
           if (counter == 0)
           {
             EEPROM.put(system_start_time_address, (time_t)value);
-            output = "System state time value: " + (String)value;
+            output = "Sys start time: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 1)
           {
             EEPROM.put(number_syringes_address, value);
             number_syringes = value;
-            output = "Num of Syringes: " + (String)value;
+            output = "# Syr: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 2)
           {
             EEPROM.put(curr_syringe_address, value);
-            output = "Curr Syringe set to : " + (String)value;
+            output = "Curr Syringe : " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 3)
           {
             //EEPROM.put(syring_table_start_address, value);
             syringe_table_start = value;
-            output = "Syringe table start address: " + (String)value;
+            output = "table start: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 4)
           {            
             // Load reverse flush time
             EEPROM.put(forward_flush_time_address, value);
-            output = "Forward flush time set to: " + (String)value;
+            output = "For flush: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
             
           }
@@ -178,7 +175,8 @@ void initEEPROM()
       {
         configFile.close();
       }
-      Serial.println("Could not find config file");
+      Serial.println(F("Could not find config file"));
+      LogPrint(SYSTEM, LOG_ERROR, "Could not find config file");
     }
 }
 
@@ -186,13 +184,13 @@ void initRTC()
 {
   
   if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
+    Serial.println(F("Couldn't find RTC"));
     while (1);
   }
   //Since this is the setup routine, always set the RTC value
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
-  Serial.print("RTC value equals: ");
+  Serial.print(F("RTC value equals: "));
   String t ="";
   timestamp(t);
   Serial.println(t);
@@ -209,12 +207,12 @@ void initPeripherals()
 void syringeIteration(){  
   LogPrint(SYSTEM, LOG_INFO, "Starting syringeIteration");
   int counter = 0;
+  char sampleDataTableName[] = "sampleTB.csv";
   if(SD.exists(sampleDataTableName))
   {
     sampleDataTableFile = SD.open(sampleDataTableName);
     if (sampleDataTableFile)
     { 
-      Serial.println("here");
       if (curr_syringe >= number_syringes){
         return; 
       }
@@ -245,7 +243,6 @@ void syringeIteration(){
       while (i<curr_syringe){
         long int a=0;
         int b=0;
-        Serial.println("while loop");
         readVals(&a,&b);  
         i++;      
       }
@@ -265,11 +262,11 @@ void syringeIteration(){
         time_t samTime = x;
         
         Serial.println(i);        
-        Serial.print("x: ");
+        Serial.print(F("x: "));
         Serial.println(samTime);
-        Serial.print("y: ");
+        Serial.print(F("y: "));
         Serial.println(y);
-        Serial.print("Address = :");
+        Serial.print(F("Address = :"));
         Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
         Serial.println();
 
