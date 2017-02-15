@@ -14,6 +14,7 @@ int lower = 49;
 int upper = 99;
 # define SIZE_OF_SYRINGE 6
 int curr_sryinge = 1;
+byte shift = 4;
 
 File sampleDataTableFile;
 char sampleDataTableName[] = "sampleTB.csv";
@@ -73,13 +74,13 @@ void syringeIteration(){
     
     if ( curr_sryinge%100 < 50 )
     {
-      //in upper
+      //in lower 
        start = 0;
        finish = 49;
     }
     else
     {
-      //in lower
+      //in upper
        start = 50;
        finish = 99;
     }
@@ -102,7 +103,7 @@ void syringeIteration(){
       readVals(x,y);
       
       EEPROM.put(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE), x);
-      EEPROM.put(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE) + 4, y);
+      EEPROM.put(SYRINGE_ADDRESS + (i*SIZE_OF_SYRINGE) + shift, y);
  
   }
   }

@@ -46,7 +46,7 @@ void loop() {
   pump_sequence_forward();
   while (wait==0){
   Serial.println("Waiting on backward sequence");
-  }
+  } //while loop closed
   pump_sequence_backward();
   Serial.println("Pump sequence complete");
   
@@ -59,7 +59,7 @@ void pump_sequence_forward(){
   Serial.println("Set pin direction forward");
   digitalWrite(A2, HIGH);
   Serial.println("Start delay");
-  delay(10);
+  delay(100);
   Serial.println("End delay");
   
   
@@ -73,7 +73,7 @@ void pump_sequence_forward(){
   //set pump enable to high
   Serial.println("Set pump enable high");
   digitalWrite(A3, HIGH);
-  delay(10);
+  delay(100);
   
 
 
@@ -81,7 +81,7 @@ void pump_sequence_forward(){
   //set pump enable to high
   Serial.println("Set pump enable high");
   digitalWrite(A3, HIGH);
-  delay(10);
+  delay(100);
   
 
 //timer ends 
@@ -108,7 +108,7 @@ void pump_sequence_backward(){
   //sensor_inputs(); //call this subfunction to read pressure and temperature here
   elapsedTime = millis()-startTime;
   Serial.println("Start timing");
-  delay(10);
+  delay(100);
   Serial.println();
   
   
