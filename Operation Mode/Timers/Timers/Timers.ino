@@ -9,6 +9,8 @@ int pumpEnable= A3; //blue LED
 int pumpDirectionLED = 8;
 int pumpEnableLED = 9;
 
+int wait=0;
+
 //testing the timer 
 long startTime;
 long elapsedTime;
@@ -22,7 +24,7 @@ void setup() {
   Timer1.initialize(100000); // set a timer of length 100000 microseconds (or 0.1 sec - or 10Hz => the led will blink 5 times, 5 cycles of on-and-off, per second)
   Timer1.attachInterrupt( direction_timer );
 
-  noInterrupts();
+ /* noInterrupts();
   //sets TCCR1A and TCCR1B registers to 0
   TCCR1A = 0;
   TCCR1B = 0;
@@ -34,14 +36,20 @@ void setup() {
   TIMSK1|= (1 << OCIE1A);
 
   interrupts();
+  */
 }
 
 void loop() {
 
+  wait=0;
   Serial.println("Now running forward pump sequence");
   pump_sequence_forward();
+  while (wait==0){
+  Serial.println("Waiting on backward sequence");
+  }
   pump_sequence_backward();
   Serial.println("Pump sequence complete");
+  
   
 
 }
@@ -106,7 +114,10 @@ void pump_sequence_backward(){
   
 }
 void direction_timer(){
+  Serial.println("Interrupt starting");
   digitalWrite(A2, digitalRead(A2)^1);
+  wait = 1;
+  Serial.println("Interrupt occurred");
 }
 
 

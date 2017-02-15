@@ -1,0 +1,29 @@
+
+
+Libraries included: 
+- SPI.h
+- SD.h
+- RTClib.h
+- EEPROM.h
+- time.h
+
+Load file “sampleDataTableFile” from PC.
+SD card breakout board: Adafruit 5v ready breakout board. 
+Real time clock: 3231 rtc (Adafruit chronodot).
+
+Serial print:
+
+Initializing SD card…			SD card will start initializing
+Initialization failed			SD card failed to connect 
+Initialization done			SD card has connected	
+SD card init failed…remove		SD card has created an example file but cannot remove it 
+SD card init successfully		SD card has created and removed an example file
+SD card init failed…open		SD card cannot open the same file 
+
+Log print:
+Could not find config file		SD card cannot open the configuration file
+Could not open Sample Data File	
+Sample Data table File does not exist	
+
+
+
