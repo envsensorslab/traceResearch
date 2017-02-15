@@ -89,6 +89,8 @@ void setup() {
   syringeIteration();
   curr_syringe = 50;
   syringeIteration();
+
+  LogPrint(DATA, LOG_DEBUG, "TEST1");
   
 }
 
@@ -418,7 +420,17 @@ bool readVals(long int* v1, int* v2) {
  *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
  *  logData[] -> This is the string that is passed into the logPrint
  */
-void LogPrint(module moduleName, log_level logLevel, char* logData)
+
+// Below is an example from the DATA log file
+/*
+  2017/2/9 12:19:49, Info, State 1 started
+  2017/2/9 12:19:49, Info, Transitioning to State 2
+  2017/2/9 12:19:49, Info, State 2 started
+  2017/2/9 12:19:49, Info, Transitioning to state3
+  2017/2/9 12:19:49, Info, State 3 started
+  2017/2/9 12:19:49, Info, Transitioning to State 1
+*/
+void LogPrint(module moduleName, log_level logLevel, char logData[])
 {
   File logFile;
   if (moduleName == DATA)
@@ -434,19 +446,19 @@ void LogPrint(module moduleName, log_level logLevel, char* logData)
     String level;
     if (logLevel == LOG_ERROR)
     {
-      level=F("Error");
+      level="Error";
     }
     else if (logLevel == LOG_WARNING)
     {
-      level=F("Warning");
+      level="Warning";
     }
     else if (logLevel == LOG_INFO)
     {
-      level=F("Info");
+      level="Info";
     }
     else 
     {
-      level=F("Debug");
+      level="Debug";
     }
     
     // Switch to reading from the RTC once it is integrated
