@@ -33,6 +33,7 @@ char configFileName[] = "configFl.txt";
 char sampleDataTableName[] = "sampleTB.csv";
 char dataLogFile[] = "data.txt";
 char systemLogFile[] = "system.txt";
+char exampleFileName[] = "example.txt";
 RTC_DS3231 rtc;
 
 // Config define varaibles
@@ -115,12 +116,12 @@ void initSDcard()
   Serial.println(F("initialization done."));
 
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
-  exampleFile = SD.open("example.txt", FILE_WRITE);
-  if (SD.exists("example.txt")) 
+  exampleFile = SD.open(exampleFileName, FILE_WRITE);
+  if (SD.exists(exampleFileName)) 
   {   
     // Remove the file once the data is loaded
-    SD.remove("example.txt");
-    if (SD.exists("example.txt")) 
+    SD.remove(exampleFileName);
+    if (SD.exists(exampleFileName)) 
     {
       Serial.println(F("SD card init failed, couldn't remove file"));
     }    
