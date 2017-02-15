@@ -7,7 +7,6 @@
 
 int sensorMin = 1023;
 int sensorMax = 0;
-const int pressurePin = 7;
 //const int temperaturePin = 6;  for the actual minipro
 const int temperaturePin = 0;    //for testing purposes on the redboard
 int sensorValue = 0;
