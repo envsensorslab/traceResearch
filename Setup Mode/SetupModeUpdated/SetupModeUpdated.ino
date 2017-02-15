@@ -67,6 +67,7 @@ enum log_level {
 enum module {
   DATA,
   SYSTEM,
+  STATE,
 };
 
 //Temp variables for testing
