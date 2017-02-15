@@ -36,6 +36,14 @@ File sampleDataTableFile;
 #define syring_table_start_address 8
 #define forward_flush_time_address 10
 
+// Set PC_COMMS to 1 if the PC is connected and should print to Serial
+// Set PC_COMMS to 0 if the PC is not connected and it should not print to serial
+#define PC_COMMS 1
+
+// Defines a fucntion below so that it doesn't use Serial.println if the comms are disabled
+#define SerialPrintLN(stream) if( PC_COMMS == 1) { Serial.println(stream);}
+#define SerialPrint(stream) if( PC_COMMS == 1) { Serial.print(stream);}
+
 //Pins (Pin value changes based on board)
 const int pressurePin = 7;
 const int temperaturePin = 0; 
@@ -54,9 +62,10 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  
+  SerialPrintLN(F("someString"));
   ///Set up peripherals + also variables
   initPeripherals(); 
+  LogPrint(SYSTEM, LOG_INFO, "Starting Operation mode");
   
 }
 
@@ -64,19 +73,19 @@ void loop() {
 
   DateTime now = rtc.now();
   time_t nowT = now.unixtime();
-  //Serial.println(nowT);
-  //Serial.println(system_start);
+  //SerialPrintLN(nowT);
+  //SerialPrintLN(system_start);
   //Wait to hit the system start time
   if(nowT > system_start)
   {
     //LogPrint(SYSTEM, LOG_INFO, "Start time hit");
-    //Serial.println("Start time hit");
+    //SerialPrintLN("Start time hit");
     //mainLoop();
   }
   else 
   {    
     //LogPrint(SYSTEM, LOG_INFO, "Start not hit, sleeping");
-    Serial.println("Start not hit, sleeping");
+    SerialPrintLN("Start not hit, sleeping");
     //Set timer for sleep
     //sleep(system_start - time.now)
   }
@@ -123,7 +132,7 @@ void mainLoop() {
         {
           // sleep until currTime
           // Sleep(until curr_sample_time);
-          Serial.println("In Here");
+          SerialPrintLN("In Here");
         }
         else
         {
@@ -211,31 +220,31 @@ void loadConfigVars()
   EEPROM.get(system_start_time_address, system_start);
   output = "Sys start: " + (String)system_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  Serial.println(output);
+  SerialPrintLN(output);
 
   //Load num sryinges
   EEPROM.get(number_syringes_address, number_syringes);
   output = "# of syr: " + (String)number_syringes;  
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  Serial.println(output);
+  SerialPrintLN(output);
   
   //Load current syringe
   EEPROM.get(curr_syringe_address, curr_syringe);
   output = "Curr Syr: " + (String)curr_syringe;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  Serial.println(output);
+  SerialPrintLN(output);
 
   //Load syringe_table_start_address
   EEPROM.get(syring_table_start_address, syringe_table_start);
   output = "Table Start: " + (String)syringe_table_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  Serial.println(output);
+  SerialPrintLN(output);
 }
 
 void initRTC()
 {
   if (! rtc.begin()) {
-    Serial.println(F("Couldn't find RTC"));
+    SerialPrintLN(F("Couldn't find RTC"));
     LogPrint(SYSTEM, LOG_ERROR, "Could not find RTC");
     while (1);
   }
@@ -252,27 +261,27 @@ void initRTC()
   // This prevents the RTC from reseting if the arudino shuts off and gets woken back up 
   if ( timeDif < 10)
   {
-    Serial.println(F("Adjusting"));
+    SerialPrintLN(F("Adjusting"));
     LogPrint(SYSTEM, LOG_INFO, "Adj rtc");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
-  Serial.print(F("RTC value equals: "));
+  SerialPrint(F("RTC value equals: "));
   String t ="";
   timestamp(t);
-  Serial.println(t);
+  SerialPrintLN(t);
 }
 
 void initSDcard()
 {
-  Serial.print(F("Initializing SD card..."));
+  SerialPrint(F("Initializing SD card..."));
 
   // Change back to 10 for Pro mini
   if (!SD.begin(53)) {
-    Serial.println(F("initialization failed!"));
+    SerialPrintLN(F("initialization failed!"));
     return;
   }
-  Serial.println(F("initialization done."));
+  SerialPrintLN(F("initialization done."));
 
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
   File exampleFile = SD.open("example.txt", FILE_WRITE);
@@ -282,17 +291,17 @@ void initSDcard()
     SD.remove("example.txt");
     if (SD.exists("example.txt")) 
     {
-      Serial.println(F("SD card init failed, couldn't remove file"));
+      SerialPrintLN(F("SD card init failed, couldn't remove file"));
     }    
     else
     {
-      Serial.println(F("SD card init succesfully"));
+      SerialPrintLN(F("SD card init succesfully"));
       LogPrint(SYSTEM, LOG_INFO, "SD init suc");
     }
   } 
   else 
   {
-    Serial.println(F("SD card init failed, couldn't open file"));
+    SerialPrintLN(F("SD card init failed, couldn't open file"));
   }
   if(exampleFile)
   {
@@ -319,7 +328,7 @@ void syringeIteration(){
       // the current syringe is
       // Functionality: When the syringe hits spot 0, it will populate it's current section
       // AKA when current syringe hits 100, it will populate the EEPROM with data from 100-149
-      Serial.println(curr_syringe%100);
+      SerialPrintLN(curr_syringe%100);
      
       if ( curr_syringe%100 < 50)
       {
@@ -357,14 +366,14 @@ void syringeIteration(){
         readVals(&x,&y);            
         time_t samTime = x;
         
-        Serial.println(i);        
-        Serial.print(F("x: "));
-        Serial.println(samTime);
-        Serial.print(F("y: "));
-        Serial.println(y);
-        Serial.print(F("Address = :"));
-        Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
-        Serial.println();
+        SerialPrintLN(i);        
+        SerialPrint(F("x: "));
+        SerialPrintLN(samTime);
+        SerialPrint(F("y: "));
+        SerialPrintLN(y);
+        SerialPrint(F("Address = :"));
+        SerialPrintLN(syringe_table_start + (i*SIZE_OF_SYRINGE));        
+        SerialPrintLN();
 
         // Put the csv values into the EEPROM
         EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
@@ -454,7 +463,7 @@ void LogPrint(module moduleName, error_level errorLevel, char logData[])
     timestamp(t);
     String myStr = t + ", " + level + ", "+ logData;
     logFile.println(myStr);
-    Serial.println(myStr);    
+    SerialPrintLN(myStr);    
     logFile.close();
   }
 }
