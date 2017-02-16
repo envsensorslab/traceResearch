@@ -543,14 +543,14 @@ void syringeIteration(){
         readVals(&x,&y);            
         time_t samTime = x;
         
-        Serial.println(i);        
-        Serial.print(F("x: "));
+        SerialPrintLN(i);        
+        SerialPrint(F("x: "));
         SerialPrintLN(samTime);
-        Serial.print(F("y: "));
+        SerialPrint(F("y: "));
         SerialPrintLN(y);
-        Serial.print(F("Address = :"));
+        SerialPrint(F("Address = :"));
         SerialPrintLN(syringe_table_start + (i*SIZE_OF_SYRINGE));        
-        Serial.println();
+        SerialPrintLN();
 
         // Put the csv values into the EEPROM
         EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
@@ -650,7 +650,7 @@ bool readVals(long int* v1, int* v2) {
   2017/2/9 12:19:49, Info, Transitioning to State 1
 */
 /*
- * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * Function: LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
  * 
  * Description: Logging function that logs to a different file depending on what the log is for. It also
  *  prints the time and the level of log that each log is for.

@@ -432,7 +432,7 @@ bool readVals(long int* v1, int* v2) {
   2017/2/9 12:19:49, Info, Transitioning to State 1
 */
 /*
- * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * Function: LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
  * 
  * Description: Logging function that logs to a different file depending on what the log is for. It also
  *  prints the time and the level of log that each log is for.
@@ -462,25 +462,25 @@ void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* 
     String level;
     if (logLevel == LOG_ERROR)
     {
-      level="Error";
+      level=F("Error");
     }
     else if (logLevel == LOG_WARNING)
     {
-      level="Warning";
+      level=F("Warning");
     }
     else if (logLevel == LOG_INFO)
     {
-      level="Info";
+      level=F("Info");
     }
     else 
     {
-      level="Debug";
+      level=F("Debug");
     }
     
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ (String)logData;
+    String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
@@ -544,7 +544,7 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
 }
 
 /*
- * Function: timestamp(STring &timeFormat) 
+ * Function: timestamp(String &timeFormat) 
  * 
  * Descriptoin: Given a String based by reference, it returns the time stamp to that string
  * 
