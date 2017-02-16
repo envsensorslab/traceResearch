@@ -20,6 +20,13 @@
 #include "RTClib.h"
 #include <time.h>
 #include <EEPROM.h>
+#include <avr/pgmspace.h>
+#ifdef PROGMEM
+#undef PROGMEM
+#define PROGMEM __attribute__((section(".progmem.data")))
+#endif
+// Note that F("THIS IS A STRING") notation stores strings in program memory.
+// This prevents programs from running out of dynamic memory due to storage of strings.
 
 //53 for MEGA, 10 for pro mini
 #define CS_PIN 53
@@ -38,6 +45,7 @@ char sampleDataTableName[] = "sampleTB.csv";
 char dataLogFile[] = "data.txt";
 char systemLogFile[] = "system.txt";
 char exampleFileName[] = "example.txt";
+char stateLogFile[] = "state.txt";
 
 // Enum for different states
 enum state {
@@ -65,12 +73,14 @@ enum module {
 //This is the size of the time portion in the EEPROM
 //Current format is time then depth for each syringe
 #define SIZE_OF_TIME 4
+
 // Address Macros
 #define system_start_time_address 0
 #define number_syringes_address 4
 #define curr_syringe_address 6
 #define syring_table_start_address 8
 #define forward_flush_time_address 10
+#define reverse_flush_time_address 11
 
 // Defines a fucntion below so that it doesn't use Serial.println if the comms are disabled
 #define SerialPrintLN(stream) if( PC_COMMS == 1) { Serial.println(stream);}
@@ -86,44 +96,63 @@ time_t curr_sample_time = 0;
 int curr_syringe = 0;
 int number_syringes = 0;
 int syringe_table_start = 0;
+byte forward_flush_time = 0;
+byte reverse_flush_time = 0;
 state curr_state= STATE1;
 RTC_DS3231 rtc;
 
+/*
+ * Function: Setup()
+ * 
+ * Description: Sets up perhiperals for the operation mode
+ */
 void setup() {
   Serial.begin(9600);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  SerialPrintLN(F("someString"));
   ///Set up peripherals + also variables
   initPeripherals(); 
-  LogPrint(SYSTEM, LOG_INFO, "Starting Operation mode");
+  LogPrint(SYSTEM, LOG_INFO, F("Starting Operation mode"));
   
 }
 
+/*
+ * Function: loop()
+ * 
+ * Description: Loops until the start time is reached then goes into the true main program
+ */
 void loop() {
 
   DateTime now = rtc.now();
   time_t nowT = now.unixtime();
-  //SerialPrintLN(nowT);
-  //SerialPrintLN(system_start);
+  SerialPrintLN(nowT);
+  SerialPrintLN(system_start);
   //Wait to hit the system start time
   if(nowT > system_start)
   {
     //LogPrint(SYSTEM, LOG_INFO, "Start time hit");
     //SerialPrintLN("Start time hit");
-    //mainLoop();
+    mainLoop();
   }
   else 
   {    
     //LogPrint(SYSTEM, LOG_INFO, "Start not hit, sleeping");
-    SerialPrintLN("Start not hit, sleeping");
+    SerialPrintLN(F("Start not hit, sleeping"));
     //Set timer for sleep
+    delay(5000);
     //sleep(system_start - time.now)
   }
       
 }
 
+/*
+ * Function: mainLoop
+ * 
+ * Description: This is the true main loop that executes once the start time is reached
+ *  This loop iterates through all the syringes and once all the syringes were sampled then 
+ *  It quits and puts the arudino to sleep
+ */
 void mainLoop() {
 
   
@@ -137,7 +166,7 @@ void mainLoop() {
     if (curr_state == STATE3)
     {
         // Log that state 3 started
-        LogPrint(STATE, LOG_INFO, "State 3 started");
+        LogPrint(STATE, LOG_INFO, F("State 3 started"));
 
         //Log Pressure
         int pressureValue = getVoltage(pressurePin);
@@ -152,7 +181,7 @@ void mainLoop() {
         incrementSyringe();
         
         // Log setting state to 1
-        LogPrint(STATE, LOG_INFO, "Transitioning to State 1");
+        LogPrint(STATE, LOG_INFO, F("Transitioning to State 1"));
         
         // set state back to 1
         curr_state = STATE1;
@@ -162,7 +191,7 @@ void mainLoop() {
     if(curr_state == STATE2)
     {
         // Log state 2 started
-        LogPrint(STATE, LOG_INFO, "State 2 started");
+        LogPrint(STATE, LOG_INFO, F("State 2 started"));
         
         // read time from RTC to sync clock
         DateTime now = rtc.now();
@@ -173,14 +202,23 @@ void mainLoop() {
         {
           // sleep until currTime
           // Sleep(until curr_sample_time);
-          SerialPrintLN("In Here");
+          SerialPrintLN(F("In Here"));
         }
         else
         {
           int pressureValue = 0;
+          //counter is being used as a debug tool, since I can't actually measure the pin values
+          //The pressure will equal after 5 counts
+          int counter = 0;
           while(curr_state == STATE2)
-          {            
+          {        
+            LogPrint(SYSTEM, LOG_DEBUG, F("Starting while loop"));    
             pressureValue = getVoltage(pressurePin);
+            //Test
+            if (counter == 5)
+            {
+              pressureValue = curr_pressure_level;
+            }
             if (pressureValue == curr_pressure_level)
             {
               //Log Current Pressure
@@ -188,14 +226,16 @@ void mainLoop() {
               LogPrint(DATA, LOG_INFO, output.c_str());
 
               // Log Stat change
-              LogPrint(STATE, LOG_INFO, "Transitioning to state3");
+              LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
               curr_state=STATE3;
             }
             else
             {
               //sleep for a couple of seconds
-              LogPrint(SYSTEM, LOG_INFO, "Sleeping to poll the sensor again");
-            }          
+              LogPrint(SYSTEM, LOG_INFO, F("Sleeping to poll the sensor again"));
+              counter++;              
+              delay(500); 
+            }         
           }
         }
     }
@@ -205,59 +245,100 @@ void mainLoop() {
     { 
         // IF the current syringe is passed the number of syringes then quit while loop and quit
         // Since curr_syringe is based 0 and num_sryinges is based 1, if they equal, also quit
+        SerialPrintLN(curr_syringe);
         if( curr_syringe >= number_syringes)
         {
+          LogPrint(SYSTEM, LOG_DEBUG, F("Quiting"));
           break;
         }
         // Log state 1 started
-        LogPrint(STATE, LOG_INFO, "State 1 started");
+        LogPrint(STATE, LOG_INFO, F("State 1 started"));
         
         // Sync Clock with RTC
         DateTime now = rtc.now();
         // set the pressure to check for and time to check for
         curr_pressure_level = currentSyringePressure();
+        SerialPrintLN(curr_pressure_level);
         // Log setting state to 2
-        LogPrint(STATE, LOG_INFO, "Transitioning to State 2");
+        LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
         // Set state to 2
         curr_state = STATE2;
     }
   }
-  LogPrint(SYSTEM, LOG_INFO, "All syringes incremented");
+  LogPrint(SYSTEM, LOG_INFO, F("All syringes incremented"));
   while(1)
   {
-    LogPrint(SYSTEM, LOG_INFO, "Sleeping forever");
+    LogPrint(SYSTEM, LOG_INFO, F("Sleeping forever"));
     delay(10000);
   }
 }
 
+/* 
+ *  Function currentSyringePressure()
+ *  
+ *  Description: Reads the pressue that corresponds with the current syringe
+ *  
+ *  Return:
+ *  Returns the pressue 
+ */
 int currentSyringePressure()
 {
   int pressureNow = 0;
   //Get the current syringe read in EEPROM the pressure 
-  EEPROM.get(syringe_table_start + curr_syringe*SIZE_OF_SYRINGE+4, pressureNow);
+  EEPROM.get(syringe_table_start + curr_syringe*SIZE_OF_SYRINGE+SIZE_OF_TIME, pressureNow);
   return pressureNow;
 }
 
 void incrementSyringe()
 {
   //increment curr_syringe by 1
+  SerialPrintLN(curr_syringe);
   curr_syringe++;
+  writeCurrSyringeToEEPROM(curr_syringe);
+  SerialPrintLN(curr_syringe);
   //if curr_syringe == 0 or curr_syringe == 50
   if (curr_syringe%100 == 0 || curr_syringe%100 == 50)
   {
-    LogPrint(SYSTEM, LOG_INFO, "Incrementing EEPROM");
+    LogPrint(SYSTEM, LOG_INFO, F("Incrementing EEPROM"));
     //then increment EEPROM 
     syringeIteration();
   }
-  //else don't do anything
 }
 
+/*
+ * Function: writeCurrSyringeToEEPROM(int syringe)
+ * 
+ * Description: Given the current syringe value it writes it to EEPROM
+ * 
+ * Arugment:
+ * int -> The current syringe value which will be written to the EEPROM
+ */
+void writeCurrSyringeToEEPROM(int syringe)
+{
+  EEPROM.write(curr_syringe_address, syringe);
+}
+
+/*
+ * Function:getVoltage(int pin)
+ * 
+ * Description: Given a pin, return the analog value of that pin
+ * 
+ * Argument:
+ * int -> The pin number that should be read from
+ * 
+ * Return:
+ * The analog value of that pin
+ */
 int getVoltage(int pin)
 {
   return(analogRead(pin));
 }
 
-
+/*
+ * Function: initPeripherals()
+ * 
+ * Description: Calls all the initalization functions 
+ */
 void initPeripherals()
 {
   initSDcard();
@@ -265,6 +346,12 @@ void initPeripherals()
   loadConfigVars();
 }
 
+/*
+ * Function: loadConfigVars()
+ * 
+ * Description: Loads all the values from EEPROM to the SRAM (Global Variables)
+ * 
+ */
 void loadConfigVars()
 {
   String output = "";
@@ -292,13 +379,32 @@ void loadConfigVars()
   output = "Table Start: " + (String)syringe_table_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
   SerialPrintLN(output);
+
+  //Load pump forward time
+  EEPROM.get(forward_flush_time_address,forward_flush_time);
+  output = "For flush: " + (String)forward_flush_time;
+  LogPrint(SYSTEM, LOG_INFO, output.c_str());
+  SerialPrintLN(output);
+
+  //Load pumpr reverse time
+  EEPROM.get(reverse_flush_time_address, reverse_flush_time);
+  output = "Rev flush: " + (String)reverse_flush_time;
+  LogPrint(SYSTEM, LOG_INFO, output.c_str());
+  SerialPrintLN(output);
 }
 
+/*
+ * Function: initRTC()
+ * 
+ * Description: Sets up RTC comms with I2C. Sets the RTC to the compile time of the sketch.
+ *  Also, this checks the compile time and only sets it if it is within 10 seconds, otherwise the compile time
+ *  Was a long time ago and the arudino just reset
+ */
 void initRTC()
 {
   if (! rtc.begin()) {
     SerialPrintLN(F("Couldn't find RTC"));
-    LogPrint(SYSTEM, LOG_ERROR, "Could not find RTC");
+    LogPrint(SYSTEM, LOG_ERROR, F("Could not find RTC"));
     while (1);
   }
   //Since this is the operation mode, only adjust the RTC time if it was complied recently
@@ -315,7 +421,7 @@ void initRTC()
   if ( timeDif < 10)
   {
     SerialPrintLN(F("Adjusting"));
-    LogPrint(SYSTEM, LOG_INFO, "Adj rtc");
+    LogPrint(SYSTEM, LOG_INFO, F("Adj rtc"));
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
@@ -332,14 +438,14 @@ void initRTC()
  */
 void initSDcard()
 {
-  Serial.print(F("Initializing SD card..."));
+  SerialPrintLN(F("Initializing SD card..."));
 
   // CHange back to 10 for Pro mini
   if (!SD.begin(CS_PIN)) {
-    Serial.println(F("initialization failed!"));
+    SerialPrintLN(F("initialization failed!"));
     return;
   }
-  Serial.println(F("initialization done."));
+  SerialPrintLN(F("initialization done."));
 
   //Opens a file, then tries to remove it, if it works then SD card init sucessful
   exampleFile = SD.open(exampleFileName, FILE_WRITE);
@@ -349,15 +455,15 @@ void initSDcard()
     SD.remove(exampleFileName);
     if (SD.exists(exampleFileName)) 
     {
-      Serial.println(F("SD card init failed, couldn't remove file"));
+      SerialPrintLN(F("SD card init failed, couldn't remove file"));
     }    
     else{
-      Serial.println(F("SD card init succesfully"));
+      SerialPrintLN(F("SD card init succesfully"));
     }
   } 
   else 
   {
-    Serial.println(F("SD card init failed, couldn't open file"));
+    SerialPrintLN(F("SD card init failed, couldn't open file"));
   }
   if(exampleFile)
   {
@@ -372,7 +478,7 @@ void initSDcard()
  *  log prints, it takes about 90 milliseconds to load 50 syringes to EEPROM
  */
 void syringeIteration(){  
-  LogPrint(SYSTEM, LOG_INFO, "Starting syringeIteration");  
+  LogPrint(SYSTEM, LOG_INFO, F("Starting syringeIteration"));  
   //unsigned long startTime = millis();
   if(SD.exists(sampleDataTableName))
   {
@@ -382,8 +488,15 @@ void syringeIteration(){
       // If the current syringe is greater than the number of syringes then all the syringes have been
       // Loaded so no need to increment the EEPROM memory
       if (curr_syringe >= number_syringes){
-        LogPrint(SYSTEM, LOG_INFO, "Quiting, curr_syringe > number_Syringes");
+        LogPrint(SYSTEM, LOG_INFO, F("Quiting, curr_syringe > number_Syringes"));
         return; 
+      }
+      // Since the first 100 syringes are loaded with the setup routine, don't worry about the iteration
+      // Until the syringe hits 100
+      if(curr_syringe < 99)
+      {
+        LogPrint(SYSTEM, LOG_INFO, F("Still, below init"));
+        return;
       }
       
       int start;
@@ -432,11 +545,11 @@ void syringeIteration(){
         
         Serial.println(i);        
         Serial.print(F("x: "));
-        Serial.println(samTime);
+        SerialPrintLN(samTime);
         Serial.print(F("y: "));
-        Serial.println(y);
+        SerialPrintLN(y);
         Serial.print(F("Address = :"));
-        Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
+        SerialPrintLN(syringe_table_start + (i*SIZE_OF_SYRINGE));        
         Serial.println();
 
         // Put the csv values into the EEPROM
@@ -449,22 +562,36 @@ void syringeIteration(){
     }
     else
     {
-      LogPrint(SYSTEM, LOG_ERROR, "Could not open Sample Data File");
+      LogPrint(SYSTEM, LOG_ERROR, F("Could not open Sample Data File"));
     }
   }
   else
   {
-    LogPrint(SYSTEM, LOG_ERROR, "Sample Data table File does not exist");
+    LogPrint(SYSTEM, LOG_ERROR, F("Sample Data table File does not exist"));
   }
   //unsigned long totTime = millis() - startTime;
   //Serial.println(totTime);
 }
 
 
+/*
+ * Function: readline()
+ * 
+ * Description: Reads a line from the file and returns it if there is any content. 
+ * 
+ * Arguments:
+ * &F -> The File passed by reference. This is the file that is opened to read from
+ * line -> This is the pointer to black char[]. The line is passed back if there is anything
+ * maxLen -> The max size to read from a single line
+ */
 bool readLine(File &f, char* line, size_t maxLen) {
+  // reads in characters to the char* until end of file
   for (size_t n = 0; n < maxLen; n++) {
+    // reads in a line from the file
     int c = f.read();
+    // If it didn't find any data
     if ( c < 0 && n == 0) return false;  // EOF
+    //when the null termintaor is hit, return the string 
     if (c < 0 || c == '\n') {
       line[n] = 0;
       return true;
@@ -474,32 +601,44 @@ bool readLine(File &f, char* line, size_t maxLen) {
   return false; // line too long
 }
 
+// This assumes the following format (example from table)
+////////////////////////////////////////////////////
+//1486567525,500
+//1486787525,90
+//1486600000,790
+//1486567600,1054
+//////////////////////////////////////////////////
+// Thus the format follows
+// long int, int
+/*
+ * Function: readVals()
+ * 
+ * Descriptoin: This function is specifically for reading an csv file. It looks for the format as descibed
+ *  above. If it doesn't follow that format undesired consequenes may occur.
+ *  
+ * Arguments:
+ * *v1 -> Size long int, since it corresponds to a time_t value. It stores in the first spot of a syringe memory layout
+ * *v2 -> Size int, since it corresponds to a depth value. It stores in the second spot of a syringe memory layout
+ */
 bool readVals(long int* v1, int* v2) {
-  char line[40], *ptr, *str;
+  char line[SIZE_OF_STRING], *ptr, *str;
+  // reads a line from the SD card
   if (!readLine(sampleDataTableFile, line, sizeof(line))) {
     return false;  // EOF or too long
   }
+  // converts the string to a long int
   *v1 = strtol(line, &ptr, 10);
   if (ptr == line) return false;  // bad number if equal
+  // searchs for a comma
   while (*ptr) {
     if (*ptr++ == ',') break;
   }
+  //converts part after , into an int
   *v2 = strtol(ptr, &str, 10);
   return str != ptr;  // true if number found
 }
 
 
-/*
- * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
- * 
- * Description: Logging function that logs to a different file depending on what the log is for. It also
- *  prints the time and the level of log that each log is for.
- *  
- *  Arguments:
- *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
- *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
- *  logData[] -> This is the string that is passed into the logPrint
- */
 
 // Below is an example from the DATA log file
 /*
@@ -510,7 +649,18 @@ bool readVals(long int* v1, int* v2) {
   2017/2/9 12:19:49, Info, State 3 started
   2017/2/9 12:19:49, Info, Transitioning to State 1
 */
-void LogPrint(module moduleName, log_level logLevel, char logData[])
+/*
+ * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * 
+ * Description: Logging function that logs to a different file depending on what the log is for. It also
+ *  prints the time and the level of log that each log is for.
+ *  
+ *  Arguments:
+ *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
+ *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
+ *  const __FlashStringHelper* -> This is used so an F() macro can be passed to the function
+ */
+void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
 {
   File logFile;
   if (moduleName == DATA)
@@ -520,6 +670,10 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
   else if (moduleName == SYSTEM)
   {
     logFile = SD.open(systemLogFile, FILE_WRITE);
+  }
+  else if( moduleName == STATE)
+  {
+    logFile = SD.open(stateLogFile, FILE_WRITE);
   }
   if (logFile)
   {
@@ -544,12 +698,70 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ logData;
+    String myStr = t + ", " + level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
   }
 }
+/*
+ * (NOTE) Same as above but takes in a char[] instead of a F()
+ * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * 
+ * Description: Logging function that logs to a different file depending on what the log is for. It also
+ *  prints the time and the level of log that each log is for.
+ *  
+ *  Arguments:
+ *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
+ *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
+ *  logData[] -> This is the string that is passed into the logPrint
+ */
+void LogPrint(module moduleName, log_level logLevel, char logData[])
+{
+  File logFile;
+  if (moduleName == DATA)
+  {    
+    logFile = SD.open(dataLogFile, FILE_WRITE);
+  }
+  else if (moduleName == SYSTEM)
+  {
+    logFile = SD.open(systemLogFile, FILE_WRITE);
+  }
+  else if( moduleName == STATE)
+  {
+    logFile = SD.open(stateLogFile, FILE_WRITE);
+  }
+  if (logFile)
+  {
+    String level;
+    if (logLevel == LOG_ERROR)
+    {
+      level="Error";
+    }
+    else if (logLevel == LOG_WARNING)
+    {
+      level="Warning";
+    }
+    else if (logLevel == LOG_INFO)
+    {
+      level="Info";
+    }
+    else 
+    {
+      level="Debug";
+    }
+    
+    // Switch to reading from the RTC once it is integrated
+    String t = "";
+    timestamp(t);
+    String myStr = t + ", " + level + ", "+ (String)logData;
+    logFile.println(myStr);
+    Serial.println(myStr);    
+    logFile.close();
+  }
+}
+
+
 
 
 /*

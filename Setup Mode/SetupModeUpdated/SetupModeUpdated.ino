@@ -34,6 +34,7 @@ char sampleDataTableName[] = "sampleTB.csv";
 char dataLogFile[] = "data.txt";
 char systemLogFile[] = "system.txt";
 char exampleFileName[] = "example.txt";
+char stateLogFile[] = "state.txt";
 RTC_DS3231 rtc;
 
 // Config define varaibles
@@ -51,6 +52,7 @@ RTC_DS3231 rtc;
 #define curr_syringe_address 6
 #define syring_table_start_address 8
 #define forward_flush_time_address 10
+#define reverse_flush_time_address 11
 
 int curr_syringe = 0;
 int number_syringes = 0;
@@ -172,20 +174,20 @@ void initEEPROM()
           }
           else if (counter == 1)
           {
-            EEPROM.put(number_syringes_address, value);
+            EEPROM.put(number_syringes_address, (int)value);
             number_syringes = value;
             output = "# Syr: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 2)
           {
-            EEPROM.put(curr_syringe_address, value);
+            EEPROM.put(curr_syringe_address, (int)value);
             output = "Curr Syringe : " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
           else if (counter == 3)
           {
-            //EEPROM.put(syring_table_start_address, value);
+            EEPROM.put(syring_table_start_address, (int)value);
             syringe_table_start = value;
             output = "table start: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
@@ -193,10 +195,17 @@ void initEEPROM()
           else if (counter == 4)
           {            
             // Load reverse flush time
-            EEPROM.put(forward_flush_time_address, value);
+            EEPROM.put(forward_flush_time_address, (byte)value);
             output = "For flush: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
             
+          }
+          else if (counter == 5)
+          {
+            //Load reverse flush time
+            EEPROM.put(reverse_flush_time_address, (byte)value);
+            output = "Rev flush: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
            counter++;
           
@@ -442,6 +451,10 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
   else if (moduleName == SYSTEM)
   {
     logFile = SD.open(systemLogFile, FILE_WRITE);
+  }
+  else if( moduleName == STATE)
+  {
+    logFile = SD.open(stateLogFile, FILE_WRITE);
   }
   if (logFile)
   {
