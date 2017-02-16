@@ -94,7 +94,7 @@ void setup() {
   curr_syringe = 50;
   syringeIteration();
 
-  LogPrint(DATA, LOG_DEBUG, "TEST1");
+  LogPrint(DATA, LOG_DEBUG, F("TEST1"));
   
 }
 
@@ -174,7 +174,7 @@ void initEEPROM()
           }
           else if (counter == 1)
           {
-            EEPROM.put(number_syringes_address, (int)value);
+            EEPROM.put(number_syringes_address, value);
             number_syringes = value;
             output = "# Syr: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
@@ -223,7 +223,7 @@ void initEEPROM()
         configFile.close();
       }
       Serial.println(F("Could not find config file"));
-      LogPrint(SYSTEM, LOG_ERROR, "Could not find config file");
+      LogPrint(SYSTEM, LOG_ERROR, F("Could not find config file"));
     }
 }
 
@@ -268,7 +268,7 @@ void initPeripherals()
  *  log prints, it takes about 90 milliseconds to load 50 syringes to EEPROM
  */
 void syringeIteration(){  
-  LogPrint(SYSTEM, LOG_INFO, "Starting syringeIteration");  
+  LogPrint(SYSTEM, LOG_INFO, F("Starting syringeIteration"));  
   //unsigned long startTime = millis();
   if(SD.exists(sampleDataTableName))
   {
@@ -278,7 +278,7 @@ void syringeIteration(){
       // If the current syringe is greater than the number of syringes then all the syringes have been
       // Loaded so no need to increment the EEPROM memory
       if (curr_syringe >= number_syringes){
-        LogPrint(SYSTEM, LOG_INFO, "Quiting, curr_syringe > number_Syringes");
+        LogPrint(SYSTEM, LOG_INFO, F("Quiting, curr_syringe > number_Syringes"));
         return; 
       }
       
@@ -345,12 +345,12 @@ void syringeIteration(){
     }
     else
     {
-      LogPrint(SYSTEM, LOG_ERROR, "Could not open Sample Data File");
+      LogPrint(SYSTEM, LOG_ERROR, F("Could not open Sample Data File"));
     }
   }
   else
   {
-    LogPrint(SYSTEM, LOG_ERROR, "Sample Data table File does not exist");
+    LogPrint(SYSTEM, LOG_ERROR, F("Sample Data table File does not exist"));
   }
   //unsigned long totTime = millis() - startTime;
   //Serial.println(totTime);
@@ -420,17 +420,7 @@ bool readVals(long int* v1, int* v2) {
   return str != ptr;  // true if number found
 }
 
-/*
- * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
- * 
- * Description: Logging function that logs to a different file depending on what the log is for. It also
- *  prints the time and the level of log that each log is for.
- *  
- *  Arguments:
- *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
- *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
- *  logData[] -> This is the string that is passed into the logPrint
- */
+
 
 // Below is an example from the DATA log file
 /*
@@ -441,6 +431,73 @@ bool readVals(long int* v1, int* v2) {
   2017/2/9 12:19:49, Info, State 3 started
   2017/2/9 12:19:49, Info, Transitioning to State 1
 */
+/*
+ * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * 
+ * Description: Logging function that logs to a different file depending on what the log is for. It also
+ *  prints the time and the level of log that each log is for.
+ *  
+ *  Arguments:
+ *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
+ *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
+ *  const __FlashStringHelper* -> This is used so an F() macro can be passed to the function
+ */
+void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
+{
+  File logFile;
+  if (moduleName == DATA)
+  {    
+    logFile = SD.open(dataLogFile, FILE_WRITE);
+  }
+  else if (moduleName == SYSTEM)
+  {
+    logFile = SD.open(systemLogFile, FILE_WRITE);
+  }
+  else if( moduleName == STATE)
+  {
+    logFile = SD.open(stateLogFile, FILE_WRITE);
+  }
+  if (logFile)
+  {
+    String level;
+    if (logLevel == LOG_ERROR)
+    {
+      level="Error";
+    }
+    else if (logLevel == LOG_WARNING)
+    {
+      level="Warning";
+    }
+    else if (logLevel == LOG_INFO)
+    {
+      level="Info";
+    }
+    else 
+    {
+      level="Debug";
+    }
+    
+    // Switch to reading from the RTC once it is integrated
+    String t = "";
+    timestamp(t);
+    String myStr = t + ", " + level + ", "+ (String)logData;
+    logFile.println(myStr);
+    Serial.println(myStr);    
+    logFile.close();
+  }
+}
+/*
+ * (NOTE) Same as above but takes in a char[] instead of a F()
+ * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
+ * 
+ * Description: Logging function that logs to a different file depending on what the log is for. It also
+ *  prints the time and the level of log that each log is for.
+ *  
+ *  Arguments:
+ *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
+ *  logLevel -> Expects one of the enumeration for log_level. This determines the severity of the log and is printed with the logprint line
+ *  logData[] -> This is the string that is passed into the logPrint
+ */
 void LogPrint(module moduleName, log_level logLevel, char logData[])
 {
   File logFile;
@@ -479,7 +536,7 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ logData;
+    String myStr = t + ", " + level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
