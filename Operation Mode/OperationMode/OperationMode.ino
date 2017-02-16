@@ -87,8 +87,16 @@ enum module {
 #define SerialPrint(stream) if( PC_COMMS == 1) { Serial.print(stream);}
 
 //Pins (Pin value changes based on board)
-const int pressurePin = 7;
-const int temperaturePin = 0; 
+#define pressurePin 7
+#define temperaturePin 0
+#define syringePin1 D2
+#define syringePin2 D3
+#define syringePin3 D4
+#define syringePin4 D5
+#define syringePin5 D6
+#define syringePin6 D7
+#define syringePin7 D8
+#define syringePin8 D9
 
 //Global Variables
 time_t system_start = 0;
@@ -126,22 +134,23 @@ void loop() {
 
   DateTime now = rtc.now();
   time_t nowT = now.unixtime();
+  SerialPrint(F("Time now: "));
   SerialPrintLN(nowT);
+  SerialPrint(F("System start: "));
   SerialPrintLN(system_start);
+  
   //Wait to hit the system start time
   if(nowT > system_start)
   {
-    //LogPrint(SYSTEM, LOG_INFO, "Start time hit");
-    //SerialPrintLN("Start time hit");
+    LogPrint(SYSTEM, LOG_INFO, F("Start time hit"));
     mainLoop();
   }
   else 
   {    
-    //LogPrint(SYSTEM, LOG_INFO, "Start not hit, sleeping");
     SerialPrintLN(F("Start not hit, sleeping"));
-    //Set timer for sleep
-    delay(5000);
-    //sleep(system_start - time.now)
+
+    int long timeDif = system_start - nowT;
+    sleepForTime(timeDif);
   }
       
 }
@@ -159,10 +168,12 @@ void mainLoop() {
   // set state to 1
   curr_state = STATE1;  
   int curr_pressure_level = 0;
+  
   while(1) {
   
     // State 3 is first, so if it ever hits state 3 it hits it first and thus is priority
     // if state is 3
+    // Also, log data in DATA file now instead of in system
     if (curr_state == STATE3)
     {
         // Log that state 3 started
@@ -200,9 +211,10 @@ void mainLoop() {
         // if curr_time is not past sample time
         if (nowT < curr_sample_time)
         {
-          // sleep until currTime
-          // Sleep(until curr_sample_time);
-          SerialPrintLN(F("In Here"));
+          long int timeDif = curr_sample_time - nowT;          
+
+          LogPrint(SYSTEM, LOG_INFO, "Sample time not hit, sleeping");
+          sleepForTime(timeDif);
         }
         else
         {
@@ -215,7 +227,7 @@ void mainLoop() {
             LogPrint(SYSTEM, LOG_DEBUG, F("Starting while loop"));    
             pressureValue = getVoltage(pressurePin);
             //Test
-            if (counter == 5)
+            if (counter == 3)
             {
               pressureValue = curr_pressure_level;
             }
@@ -223,7 +235,7 @@ void mainLoop() {
             {
               //Log Current Pressure
               String output = "Press: " + (String)pressureValue;
-              LogPrint(DATA, LOG_INFO, output.c_str());
+              LogPrint(SYSTEM, LOG_INFO, output.c_str());
 
               // Log Stat change
               LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
@@ -254,11 +266,10 @@ void mainLoop() {
         // Log state 1 started
         LogPrint(STATE, LOG_INFO, F("State 1 started"));
         
-        // Sync Clock with RTC
-        DateTime now = rtc.now();
         // set the pressure to check for and time to check for
         curr_pressure_level = currentSyringePressure();
         SerialPrintLN(curr_pressure_level);
+        
         // Log setting state to 2
         LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
         // Set state to 2
@@ -273,6 +284,49 @@ void mainLoop() {
   }
 }
 
+/*
+ * Function: sleepForTime(int long timeDif)
+ * 
+ * Description: Given a time difference it sleeps for an apporpriate amount of time to make sure that
+ *  A clock skew does not miss the start time. It will also wake up to do a quick log. This function 
+ *  should be incapsulated in a while loop so that it keeps getting called.
+ *  
+ *  Argument:
+ *  int long -> This is the time difference between the time desired and now. It should be performed by
+ *    comparing unixtimes in seconds.
+ */
+void sleepForTime(int long timeDif)
+{
+   if (timeDif > 540)
+    {
+      LogPrint(SYSTEM, LOG_INFO, F("Sleeping for 6 minutes"));
+      delay(360000);
+    }
+    // If the time is more than a 2.5 min but less than 8, then sleep for 2 minutes increments
+    else if (timeDif > 150)
+    {      
+      LogPrint(SYSTEM, LOG_INFO, F("Sleeping for 2 minutes"));
+      delay(120000);
+    }
+    else if (timeDif > 45)
+    {      
+      LogPrint(SYSTEM, LOG_INFO, F("Sleeping for 30 second"));
+      delay(30000);
+    }
+    else if (timeDif > 5)
+    {
+      LogPrint(SYSTEM, LOG_INFO, F("Sleeping for 1 second"));
+      delay(1000);
+    }
+    // When the time gets close, just sleep for half a second incremements
+    else if (timeDif > 1)
+    {
+      LogPrint(SYSTEM, LOG_INFO, F("Sleeping for half a second"));
+      delay(500);
+    }
+    // After it gets to 1 second, then just loop with out stopping
+}
+
 /* 
  *  Function currentSyringePressure()
  *  
@@ -285,7 +339,7 @@ int currentSyringePressure()
 {
   int pressureNow = 0;
   //Get the current syringe read in EEPROM the pressure 
-  EEPROM.get(syringe_table_start + curr_syringe*SIZE_OF_SYRINGE+SIZE_OF_TIME, pressureNow);
+  EEPROM.get(syringe_table_start + (curr_syringe%100)*SIZE_OF_SYRINGE+SIZE_OF_TIME, pressureNow);
   return pressureNow;
 }
 
@@ -361,6 +415,9 @@ void loadConfigVars()
   output = "Sys start: " + (String)system_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
   SerialPrintLN(output);
+
+  //Used just for testing
+  system_start = 1487261357;
 
   //Load num sryinges
   EEPROM.get(number_syringes_address, number_syringes);
@@ -609,7 +666,8 @@ bool readLine(File &f, char* line, size_t maxLen) {
 //1486567600,1054
 //////////////////////////////////////////////////
 // Thus the format follows
-// long int, int
+// long int, int -> as csv file
+// Remember the start time must be in unixtime of the timezone that the user compiled the code
 /*
  * Function: readVals()
  * 
@@ -637,8 +695,6 @@ bool readVals(long int* v1, int* v2) {
   *v2 = strtol(ptr, &str, 10);
   return str != ptr;  // true if number found
 }
-
-
 
 // Below is an example from the DATA log file
 /*
@@ -680,30 +736,32 @@ void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* 
     String level;
     if (logLevel == LOG_ERROR)
     {
-      level="Error";
+      level=F("Error");
     }
     else if (logLevel == LOG_WARNING)
     {
-      level="Warning";
+      level=F("Warning");
     }
     else if (logLevel == LOG_INFO)
     {
-      level="Info";
+      level=F("Info");
     }
     else 
     {
-      level="Debug";
+      level=F("Debug");
     }
     
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ (String)logData;
+    String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
   }
 }
+
+
 /*
  * (NOTE) Same as above but takes in a char[] instead of a F()
  * Function: LogPrint(module moduleName, log_level logLevel, char logData[])
@@ -729,40 +787,39 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
   }
   else if( moduleName == STATE)
   {
-    logFile = SD.open(stateLogFile, FILE_WRITE);
+    //logFile = SD.open(stateLogFile, FILE_WRITE);
+    //For now log state events in system log because it may be useful together
+    logFile = SD.open(systemLogFile, FILE_WRITE);
   }
   if (logFile)
   {
     String level;
     if (logLevel == LOG_ERROR)
     {
-      level="Error";
+      level=F("Error");
     }
     else if (logLevel == LOG_WARNING)
     {
-      level="Warning";
+      level=F("Warning");
     }
     else if (logLevel == LOG_INFO)
     {
-      level="Info";
+      level=F("Info");
     }
     else 
     {
-      level="Debug";
+      level=F("Debug");
     }
     
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ (String)logData;
+    String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
   }
 }
-
-
-
 
 /*
  * Function: timestamp(STring &timeFormat) 

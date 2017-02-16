@@ -94,7 +94,7 @@ void setup() {
   curr_syringe = 50;
   syringeIteration();
 
-  LogPrint(DATA, LOG_DEBUG, F("TEST1"));
+  LogPrint(DATA, LOG_DEBUG, F("Setup Routine Done"));
   
 }
 
@@ -518,25 +518,25 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
     String level;
     if (logLevel == LOG_ERROR)
     {
-      level="Error";
+      level=F("Error");
     }
     else if (logLevel == LOG_WARNING)
     {
-      level="Warning";
+      level=F("Warning");
     }
     else if (logLevel == LOG_INFO)
     {
-      level="Info";
+      level=F("Info");
     }
     else 
     {
-      level="Debug";
+      level=F("Debug");
     }
     
     // Switch to reading from the RTC once it is integrated
     String t = "";
     timestamp(t);
-    String myStr = t + ", " + level + ", "+ (String)logData;
+    String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
     Serial.println(myStr);    
     logFile.close();
