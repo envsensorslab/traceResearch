@@ -416,9 +416,6 @@ void loadConfigVars()
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
   SerialPrintLN(output);
 
-  //Used just for testing
-  system_start = 1487261357;
-
   //Load num sryinges
   EEPROM.get(number_syringes_address, number_syringes);
   output = "# of syr: " + (String)number_syringes;  
