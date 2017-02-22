@@ -1,5 +1,5 @@
 void setup() {
-
+/*
 #define syringePin1 2
 #define syringePin2 3
 #define syringePin3 4
@@ -8,6 +8,16 @@ void setup() {
 #define syringePin6 7
 #define syringePin7 8
 #define syringePin8 9
+*/
+
+#define syringePin1 22
+#define syringePin2 24
+#define syringePin3 26
+#define syringePin4 28
+#define syringePin5 30
+#define syringePin6 32
+#define syringePin7 34
+#define syringePin8 36
 }
 
 void loop() {
