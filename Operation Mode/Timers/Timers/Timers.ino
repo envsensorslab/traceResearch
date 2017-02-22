@@ -94,8 +94,16 @@ void pump_sequence_backward(){
   //set direction pin to low  
   //set pump enable to low
 
+  
   Serial.println("Read pressure and temp here");
   //sensor_inputs(); //call this subfunction to read pressure and temperature here
+  //String output = "";
+  //output = "Rev flush: " + (String)[curr_syringe, pressure, temperature];
+  //LogPrint(SYSTEM, LOG_INFO, output.c_str());                   
+  
+  //sub-function for syringe actuation
+  //syringe_actuation(curr_syringe)
+
 
  
   Timer1.initialize(backward_time);  //initialize timer
