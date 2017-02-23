@@ -11,7 +11,7 @@ int sensorMax = 0;           // max sensor value
 void setup() {
   // calibrate during the first five seconds
   while (millis() < 5000) {
-    sensorValue = analogRead(sensorPin);
+    sensorValue = analogRead(pressurePin);
 
     // record the maximum sensor value
     if (sensorValue > sensorMax) {
@@ -28,7 +28,7 @@ void setup() {
 
 void loop() {
   // read the sensor:
-  sensorValue = analogRead(sensorPin);
+  sensorValue = analogRead(pressurePin);
 
   // apply the calibration to the sensor reading
   sensorValue = map(sensorValue, sensorMin, sensorMax, 0, 1023);
