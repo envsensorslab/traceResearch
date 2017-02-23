@@ -63,4 +63,5 @@ digitalWrite(syringePin8, HIGH);
 delay(1000);
 digitalWrite(syringePin8, LOW);
 
+digitalWrite(syringePin2, LOW);
 }
