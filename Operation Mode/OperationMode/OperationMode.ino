@@ -29,7 +29,7 @@
 // This prevents programs from running out of dynamic memory due to storage of strings.
 
 //53 for MEGA, 10 for pro mini
-#define CS_PIN 53
+#define CS_PIN 10
 
 // Set PC_COMMS to 1 if the PC is connected and should print to Serial
 // Set PC_COMMS to 0 if the PC is not connected and it should not print to serial
@@ -89,14 +89,15 @@ enum module {
 //Pins (Pin value changes based on board)
 #define pressurePin 7
 #define temperaturePin 0
-#define syringePin1 D2
-#define syringePin2 D3
-#define syringePin3 D4
-#define syringePin4 D5
-#define syringePin5 D6
-#define syringePin6 D7
-#define syringePin7 D8
-#define syringePin8 D9
+
+#define syringePin1 2
+#define syringePin2 3
+#define syringePin3 4
+#define syringePin4 5
+#define syringePin5 6
+#define syringePin6 7
+#define syringePin7 8
+#define syringePin8 9
 
 //Global Variables
 time_t system_start = 0;
@@ -108,6 +109,12 @@ byte forward_flush_time = 0;
 byte reverse_flush_time = 0;
 state curr_state= STATE1;
 RTC_DS3231 rtc;
+
+//Pin definition
+#define mosfestNumPins 4
+const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
+#define selectNumPins 4
+const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
 
 /*
  * Function: Setup()
@@ -186,6 +193,7 @@ void mainLoop() {
         
         // start the sample sequence
         //startSampleSequence();
+        syringe_actuation();
         
         // when sampling is done
         // Increment the curr syringe
@@ -397,7 +405,43 @@ void initPeripherals()
 {
   initSDcard();
   initRTC();  
+  initSyringes();
   loadConfigVars();
+}
+
+/*
+ * Function: initSyringes()
+ * 
+ * Description: Sets all the syringe pins as outputs and make sure they are set low
+ * 
+ */
+void initSyringes()
+{
+  for (int i =0; i< (mosfestNumPins + selectNumPins); i++)
+  {
+    //First set all the mosfet pins
+    //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
+    if(i < mosfestNumPins)
+    {
+       Serial.print("Mosfet: ");
+       Serial.println(mosfetPins[i]);
+       pinMode(mosfetPins[i], OUTPUT);
+       digitalWrite(mosfetPins[i], LOW);  
+    }
+    // make sure to set all the selector pins. Selector pins select which syringe inside
+    // of each J componenent piece. (connected to NPN type mosfet
+    else 
+    {
+       Serial.print("selector: ");
+       Serial.println(selectPins[i-mosfestNumPins]);
+       pinMode(selectPins[i-mosfestNumPins], OUTPUT);
+       digitalWrite(selectPins[i-mosfestNumPins], LOW);  
+    }
+    
+  }
+  //Make sure the ports have time to settle
+  LogPrint(SYSTEM, LOG_INFO, F("Done with init of syringe pins"));
+  delay(500);
 }
 
 /*
@@ -625,6 +669,38 @@ void syringeIteration(){
   }
   //unsigned long totTime = millis() - startTime;
   //Serial.println(totTime);
+}
+
+/*
+ * Function: syringe_actuation()
+ * 
+ * Description: Sets the corresponding syringe pin to high to all for sampling
+ * 
+ * Reliance:
+ * Relies on the global variable curr_syringe.
+ */
+void syringe_actuation()
+{
+  int pinHigh = 0;
+  int pinLow = 0;
+
+  Serial.println(curr_syringe/4);
+  pinHigh = mosfetPins[(int)curr_syringe/4];
+
+  Serial.print("modolo: ");
+  Serial.println(curr_syringe%(mosfestNumPins));
+  pinLow = selectPins[curr_syringe%(selectNumPins)];
+ 
+  Serial.print("pinHigh is ");
+  Serial.println(pinHigh);
+  Serial.print("PinLow is ");
+  Serial.println(pinLow);
+  digitalWrite(pinHigh, HIGH);
+  digitalWrite(pinLow, HIGH);
+  //Need to figure out the delay for actuation the syringe
+  delay(2000);
+  digitalWrite(pinHigh, LOW);
+  digitalWrite(pinLow, LOW);  
 }
 
 
