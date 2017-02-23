@@ -44,7 +44,7 @@ RTC_DS3231 rtc;
 //Current format is time then depth for each syringe
 #define SIZE_OF_TIME 4
 //53 for MEGA, 10 for pro mini
-#define CS_PIN 53
+#define CS_PIN 10
 
 // Address locations
 #define system_start_time_address 0
@@ -52,7 +52,8 @@ RTC_DS3231 rtc;
 #define curr_syringe_address 6
 #define syring_table_start_address 8
 #define forward_flush_time_address 10
-#define reverse_flush_time_address 11
+#define reverse_flush_time_address 12
+#define pump_startup_time_address 14
 
 int curr_syringe = 0;
 int number_syringes = 0;
@@ -195,7 +196,7 @@ void initEEPROM()
           else if (counter == 4)
           {            
             // Load reverse flush time
-            EEPROM.put(forward_flush_time_address, (byte)value);
+            EEPROM.put(forward_flush_time_address, (int)value);
             output = "For flush: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
             
@@ -203,10 +204,18 @@ void initEEPROM()
           else if (counter == 5)
           {
             //Load reverse flush time
-            EEPROM.put(reverse_flush_time_address, (byte)value);
+            EEPROM.put(reverse_flush_time_address, (int)value);
             output = "Rev flush: " + (String)value;
             LogPrint(SYSTEM, LOG_INFO, output.c_str());
           }
+          else if (counter == 6)
+          {
+            //Load reverse flush time
+            EEPROM.put(pump_startup_time_address, (int)value);
+            output = "Pump Start time: " + (String)value;
+            LogPrint(SYSTEM, LOG_INFO, output.c_str());
+          }
+          
            counter++;
           
     

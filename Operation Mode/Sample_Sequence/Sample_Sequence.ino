@@ -3,8 +3,8 @@
 //A2 is pump direction
 
 //these LEDs are for testing purposes
-int pumpDirection = A2; //green LED
-int pumpEnable= A3; //blue LED
+#define pumpDirection A2 //green LED
+#define pumpEnable A3 //blue LED
 
 
 boolean pumpOn = false;
@@ -12,23 +12,33 @@ boolean pumpOn = false;
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
 
-byte forward_flush_time = 5000;
-byte reverse_flush_time = 2000;
+int forward_flush_time = 5000;
+int reverse_flush_time = 2000;
+int pump_start_time = 2000;
 
 
 
 void setup() {
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
   pinMode(pumpDirection, OUTPUT);
   pinMode(pumpEnable, OUTPUT);  
 }
 
 void loop() {
   // Start pumping in the forward direction
+  sampleSequence();
+}
+
+void sampleSequence()
+{
   pump_sequence_forward();  
+  //syringeActuation();
   // Start pumping in the reverse direction
   pump_sequence_backward();
 }
-
 
 /*
  * Function: pump_sequence_forware()
@@ -40,14 +50,16 @@ void loop() {
  *    forward_flush_time: which is a global variable read in from the EEPROM
  */
 void pump_sequence_forward(){
+  Serial.println("Start forward sequence");
 
   pumpForw = true;
   pumpOn = true;  
   updatePumpState(pumpOn,pumpForw);
+  Serial.println("starting delay");
+  delay(pump_start_time);
   delay(forward_flush_time);
   pumpOn= false;
   updatePumpState(pumpOn, pumpForw);
-
 }
 
 /*
@@ -62,16 +74,14 @@ void pump_sequence_backward(){
   //when timer hits value, reverse pin direction
   //set direction pin to low  
   //set pump enable to low
-
+  Serial.println("Starting backup function");
   pumpForw = false;
   pumpOn = true;
   updatePumpState(pumpOn, pumpForw);
+  delay(pump_start_time);
   delay(reverse_flush_time);
   pumpOn= false;
   updatePumpState(pumpOn, pumpForw);
-
-  
-
 }
 
 /*
@@ -90,6 +100,7 @@ void pump_sequence_backward(){
  *    The pin numbers for the pumpDirection and the pumpEnable
  */
 void updatePumpState(boolean pumpPower, boolean pumpDLR){
+  Serial.println("updating pump state");
   pumpForw = pumpDLR;
   digitalWrite(pumpDirection, pumpForw);
   pumpOn = pumpPower;

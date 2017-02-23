@@ -68,7 +68,8 @@ enum module {
 };
 
 //Macros
-#define SIZE_OF_SYRINGE 6
+// Size of syringe is number of bytes
+#define SIZE_OF_SYRINGE 6 
 #define SIZE_OF_STRING 20
 //This is the size of the time portion in the EEPROM
 //Current format is time then depth for each syringe
@@ -80,7 +81,8 @@ enum module {
 #define curr_syringe_address 6
 #define syring_table_start_address 8
 #define forward_flush_time_address 10
-#define reverse_flush_time_address 11
+#define reverse_flush_time_address 12
+#define pump_startup_time_address 14
 
 // Defines a fucntion below so that it doesn't use Serial.println if the comms are disabled
 #define SerialPrintLN(stream) if( PC_COMMS == 1) { Serial.println(stream);}
@@ -89,6 +91,8 @@ enum module {
 //Pins (Pin value changes based on board)
 #define pressurePin 7
 #define temperaturePin 0
+#define pumpDirection A2 //green LED
+#define pumpEnable A3 //blue LED
 
 #define syringePin1 2
 #define syringePin2 3
@@ -105,10 +109,15 @@ time_t curr_sample_time = 0;
 int curr_syringe = 0;
 int number_syringes = 0;
 int syringe_table_start = 0;
-byte forward_flush_time = 0;
-byte reverse_flush_time = 0;
+int forward_flush_time = 0;
+int reverse_flush_time = 0;
+int pump_start_time = 0;
 state curr_state= STATE1;
 RTC_DS3231 rtc;
+boolean pumpOn = false;
+//pumpForw == true -> forward direction
+//pumpForw == false -> reverse direction
+boolean pumpForw = true;
 
 //Pin definition
 #define mosfestNumPins 4
@@ -190,10 +199,13 @@ void mainLoop() {
         int pressureValue = getVoltage(pressurePin);
         String output = "Press: " + (String)pressureValue;
         LogPrint(DATA, LOG_INFO, output.c_str());
+
+
+        //Need to log data
+        // Figure out exactly when data should be sampled !!!!!!!!!!!!!!
         
         // start the sample sequence
-        //startSampleSequence();
-        syringe_actuation();
+        startSampleSequence();
         
         // when sampling is done
         // Increment the curr syringe
@@ -484,9 +496,15 @@ void loadConfigVars()
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
   SerialPrintLN(output);
 
-  //Load pumpr reverse time
+  //Load pump reverse time
   EEPROM.get(reverse_flush_time_address, reverse_flush_time);
   output = "Rev flush: " + (String)reverse_flush_time;
+  LogPrint(SYSTEM, LOG_INFO, output.c_str());
+  SerialPrintLN(output);
+
+  //Load pump startup time
+  EEPROM.get(pump_startup_time_address, pump_start_time);
+  output = "Pump Start Time: " + (String)reverse_flush_time;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
   SerialPrintLN(output);
 }
@@ -703,6 +721,85 @@ void syringe_actuation()
   digitalWrite(pinLow, LOW);  
 }
 
+/*
+ * Function: sampleSequence()
+ * 
+ * Descrition: Initiates a sample sequence which takes the data measurements and starts pumping
+ */
+void sampleSequence()
+{
+  pump_sequence_forward();  
+  syringeActuation();
+  // Start pumping in the reverse direction
+  pump_sequence_backward();
+}
+
+/*
+ * Function: pump_sequence_forware()
+ * 
+ * Description: Starts the pump in the forward direction for the specified amount of time
+ *  from the EEPROM
+ *  
+ *  Relies:
+ *    forward_flush_time: which is a global variable read in from the EEPROM
+ */
+void pump_sequence_forward(){
+  Serial.println("Start forward sequence");
+
+  pumpForw = true;
+  pumpOn = true;  
+  updatePumpState(pumpOn,pumpForw);
+  Serial.println("starting delay");
+  delay(pump_start_time);
+  delay(forward_flush_time);
+  pumpOn= false;
+  updatePumpState(pumpOn, pumpForw);
+}
+
+/*
+ * Function: pump_sequence_backward()
+ * 
+ * Description: Starts the pum in the reverse direction for the specified amount of time
+ * 
+ * Relies:
+ *  reverse_flush_time: which is a global variable read in from the EEPROM
+ */
+void pump_sequence_backward(){
+  //when timer hits value, reverse pin direction
+  //set direction pin to low  
+  //set pump enable to low
+  Serial.println("Starting backup function");
+  pumpForw = false;
+  pumpOn = true;
+  updatePumpState(pumpOn, pumpForw);
+  delay(pump_start_time);
+  delay(reverse_flush_time);
+  pumpOn= false;
+  updatePumpState(pumpOn, pumpForw);
+}
+
+/*
+ * Function: updatePumpState(boolean pumpPower, boolean pumpDLR)
+ * 
+ * Description: Updates the current state of the pump. It is passed in the direction the pump should be 
+ *  and also if the pump should be enabled. 
+ *  
+ *  Arguments:
+ *    boolean pumpPower: True or False to indicate whether the pump enable should occur
+ *    boolean pumpDLR: True or False to indicate the direction the pump should pump
+ *      True -> Forward direction
+ *      False -> Reverse direction
+ *      
+ *  Relies:
+ *    The pin numbers for the pumpDirection and the pumpEnable
+ */
+void updatePumpState(boolean pumpPower, boolean pumpDLR){
+  Serial.println("updating pump state");
+  pumpForw = pumpDLR;
+  digitalWrite(pumpDirection, pumpForw);
+  pumpOn = pumpPower;
+  digitalWrite(pumpEnable, pumpOn);
+}
 
 /*
  * Function: readline()
