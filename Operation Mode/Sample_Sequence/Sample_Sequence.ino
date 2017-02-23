@@ -15,7 +15,6 @@ int forward_time = 5000*2;
 
 
 void setup() {
-  Serial.begin(9600);
   pinMode(pumpDirection, OUTPUT);
   pinMode(pumpEnable, OUTPUT);
   
@@ -24,12 +23,10 @@ void setup() {
 void loop() {
 
 
-  Serial.println("Starting forward pump sequence");
   pump_sequence_forward();
  
   delay(forward_time);
   
-  Serial.println("Read pressure and temp here");
   //sensor_inputs(); //call this subfunction to read pressure and temperature here
   //String output = "";
   //output = "Rev flush: " + (String)[curr_syringe, pressure, temperature];
@@ -40,23 +37,18 @@ void loop() {
 
   updatePumpState(true,false);
   pump_sequence_backward();
-  Serial.println("Pump sequence complete");
-  Serial.println("");
 }
 
 
 // sub-functions //////////////
 void pump_sequence_forward(){
 
-  Serial.println("Set pin direction forward");
   pumpForw = true;
 
-  Serial.println("Running forward pump sequence...");
   digitalWrite(pumpDirection,pumpForw);
   pumpOn = true;
   digitalWrite(pumpEnable,pumpOn);
 
-  Serial.println("Stopping pump");
   pumpOn= false;
   digitalWrite(pumpEnable, pumpOn);
 
@@ -67,20 +59,14 @@ void pump_sequence_backward(){
   //set direction pin to low  
   //set pump enable to low
 
-  Serial.println("Now running backward pump sequence");
-  Serial.println("Set direction pin low");
   pumpForw = false;
   digitalWrite(pumpDirection, pumpForw);
-  Serial.println("Set pump enable pin high- start pumping");
   pumpOn = true;
   digitalWrite(pumpEnable, pumpOn);
 
-  Serial.println("Stopping pump");
   pumpOn= false;
   digitalWrite(pumpEnable, pumpOn);
- 
-  delay(5000);
-  Serial.println();
+
   
 
 }
