@@ -69,8 +69,8 @@ void meters_to_mV(){
   int pv_arduino;
   int pv_sensor;
   
-  pressure = depth/(10/14.57);
-  pv_sensor = (pressure*m + b2)/(10/v_power);
+  pressure = depth * 14.57/10);
+  pv_sensor = (v_power/10)*(pressure*m + b2);
   pv_arduino = pv_sensor*a + b;
   p_arduino = (pv_arduino*1023)/5;
 
