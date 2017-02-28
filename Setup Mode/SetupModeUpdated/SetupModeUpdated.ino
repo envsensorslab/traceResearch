@@ -31,7 +31,7 @@ File configFile;
 
 char configFileName[] = "configFl.txt";
 char sampleDataTableName[] = "sampleTB.csv";
-char dataLogFile[] = "data.txt";
+char dataLogFile[] = "data.csv";
 char systemLogFile[] = "system.txt";
 char exampleFileName[] = "example.txt";
 char stateLogFile[] = "state.txt";

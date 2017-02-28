@@ -45,7 +45,7 @@ File exampleFile;
 
 //File names
 char sampleDataTableName[] = "sampleTB.csv";
-char dataLogFile[] = "data.txt";
+char dataLogFile[] = "data.csv";
 char systemLogFile[] = "system.txt";
 char exampleFileName[] = "example.txt";
 char stateLogFile[] = "state.txt";
@@ -201,10 +201,11 @@ void mainLoop() {
         LogPrint(STATE, LOG_INFO, F("State 3 started"));
 
         //Log Pressure
-        int pressureValue = getVoltage(pressurePin);
-        String output = "Press: " + (String)pressureValue;
+        int pressure_value = getVoltage(pressurePin);
+        int temp_value = getVoltage(temperaturePin);
+        String output = (String)pressure_value + ", " + (String)temp_value;
         String output2 = "Curr_syringe = " + (String)curr_syringe;
-        LogPrint(DATA, LOG_INFO, output2.c_str());
+        LogPrint(SYSTEM, LOG_INFO, output2.c_str());
         LogPrint(DATA, LOG_INFO, output.c_str());
 
 
