@@ -33,6 +33,9 @@
 
 // Set PC_COMMS to 1 if the PC is connected and should print to Serial
 // Set PC_COMMS to 0 if the PC is not connected and it should not print to serial
+//!!!!!!!!!!!!!!!! Make sure to set to 1 when actually using the System!!!!!!!!!!!!!!!
+//The serial prints cause a lot of slowdown especially with iteration, test system first
+// with it set to 1 though
 #define PC_COMMS 1
 
 
@@ -74,6 +77,7 @@ enum module {
 //This is the size of the time portion in the EEPROM
 //Current format is time then depth for each syringe
 #define SIZE_OF_TIME 4
+#define SYRINGE_PIN_ACTUATION_DELAY 500 //in ms
 
 // Address Macros
 #define system_start_time_address 0
@@ -92,8 +96,9 @@ enum module {
 #define pressurePin 7
 #define temperaturePin 0
 #define pumpDirection A2 //green LED
-#define pumpEnable A3 //blue LED
+#define pumpEnable A3 //orange LED
 
+//If adding more pins make sure to update number of pins and the arrays below
 #define syringePin1 2
 #define syringePin2 3
 #define syringePin3 4
@@ -198,6 +203,8 @@ void mainLoop() {
         //Log Pressure
         int pressureValue = getVoltage(pressurePin);
         String output = "Press: " + (String)pressureValue;
+        String output2 = "Curr_syringe = " + (String)curr_syringe;
+        LogPrint(DATA, LOG_INFO, output2.c_str());
         LogPrint(DATA, LOG_INFO, output.c_str());
 
 
@@ -205,7 +212,7 @@ void mainLoop() {
         // Figure out exactly when data should be sampled !!!!!!!!!!!!!!
         
         // start the sample sequence
-        startSampleSequence();
+        sampleSequence();
         
         // when sampling is done
         // Increment the curr syringe
@@ -369,6 +376,7 @@ void incrementSyringe()
   SerialPrintLN(curr_syringe);
   curr_syringe++;
   writeCurrSyringeToEEPROM(curr_syringe);
+  SerialPrint(F("Current Syringe: "));
   SerialPrintLN(curr_syringe);
   //if curr_syringe == 0 or curr_syringe == 50
   if (curr_syringe%100 == 0 || curr_syringe%100 == 50)
@@ -418,6 +426,7 @@ void initPeripherals()
   initSDcard();
   initRTC();  
   initSyringes();
+  initPump();
   loadConfigVars();
 }
 
@@ -435,8 +444,8 @@ void initSyringes()
     //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
     if(i < mosfestNumPins)
     {
-       Serial.print("Mosfet: ");
-       Serial.println(mosfetPins[i]);
+       SerialPrint(F("Mosfet: "));
+       SerialPrintLN(mosfetPins[i]);
        pinMode(mosfetPins[i], OUTPUT);
        digitalWrite(mosfetPins[i], LOW);  
     }
@@ -444,8 +453,8 @@ void initSyringes()
     // of each J componenent piece. (connected to NPN type mosfet
     else 
     {
-       Serial.print("selector: ");
-       Serial.println(selectPins[i-mosfestNumPins]);
+       SerialPrint(F("selector: "));
+       SerialPrintLN(selectPins[i-mosfestNumPins]);
        pinMode(selectPins[i-mosfestNumPins], OUTPUT);
        digitalWrite(selectPins[i-mosfestNumPins], LOW);  
     }
@@ -586,6 +595,18 @@ void initSDcard()
     exampleFile.close();
   }
 }
+
+/*
+ * Function: initPump()
+ * 
+ * Description: Intalizes pump pins to output
+ */
+void initPump()
+{
+  pinMode(pumpDirection, OUTPUT);
+  pinMode(pumpEnable, OUTPUT);
+}
+
 /*
  * Function: syringeIteration()
  * 
@@ -686,7 +707,7 @@ void syringeIteration(){
     LogPrint(SYSTEM, LOG_ERROR, F("Sample Data table File does not exist"));
   }
   //unsigned long totTime = millis() - startTime;
-  //Serial.println(totTime);
+  //SerialPrintLN(totTime);
 }
 
 /*
@@ -697,26 +718,26 @@ void syringeIteration(){
  * Reliance:
  * Relies on the global variable curr_syringe.
  */
-void syringe_actuation()
+void syringeActuation()
 {
   int pinHigh = 0;
   int pinLow = 0;
 
-  Serial.println(curr_syringe/4);
+  SerialPrintLN(curr_syringe/4);
   pinHigh = mosfetPins[(int)curr_syringe/4];
 
-  Serial.print("modolo: ");
-  Serial.println(curr_syringe%(mosfestNumPins));
+  SerialPrint(F("modolo: "));
+  SerialPrintLN(curr_syringe%(mosfestNumPins));
   pinLow = selectPins[curr_syringe%(selectNumPins)];
  
-  Serial.print("pinHigh is ");
-  Serial.println(pinHigh);
-  Serial.print("PinLow is ");
-  Serial.println(pinLow);
+  SerialPrint(F("pinHigh is "));
+  SerialPrintLN(pinHigh);
+  SerialPrint(F("PinLow is "));
+  SerialPrintLN(pinLow);
   digitalWrite(pinHigh, HIGH);
   digitalWrite(pinLow, HIGH);
   //Need to figure out the delay for actuation the syringe
-  delay(2000);
+  delay(SYRINGE_PIN_ACTUATION_DELAY);
   digitalWrite(pinHigh, LOW);
   digitalWrite(pinLow, LOW);  
 }
@@ -728,10 +749,10 @@ void syringe_actuation()
  */
 void sampleSequence()
 {
-  pump_sequence_forward();  
+  pumpSequenceForward();  
   syringeActuation();
   // Start pumping in the reverse direction
-  pump_sequence_backward();
+  pumpSequenceBackward();
 }
 
 /*
@@ -743,13 +764,13 @@ void sampleSequence()
  *  Relies:
  *    forward_flush_time: which is a global variable read in from the EEPROM
  */
-void pump_sequence_forward(){
-  Serial.println("Start forward sequence");
+void pumpSequenceForward(){
+  SerialPrintLN(F("Start forward sequence"));
 
   pumpForw = true;
   pumpOn = true;  
   updatePumpState(pumpOn,pumpForw);
-  Serial.println("starting delay");
+  SerialPrintLN(F("starting delay"));
   delay(pump_start_time);
   delay(forward_flush_time);
   pumpOn= false;
@@ -764,11 +785,11 @@ void pump_sequence_forward(){
  * Relies:
  *  reverse_flush_time: which is a global variable read in from the EEPROM
  */
-void pump_sequence_backward(){
+void pumpSequenceBackward(){
   //when timer hits value, reverse pin direction
   //set direction pin to low  
   //set pump enable to low
-  Serial.println("Starting backup function");
+  SerialPrintLN(F("Starting backup function"));
   pumpForw = false;
   pumpOn = true;
   updatePumpState(pumpOn, pumpForw);
@@ -794,7 +815,7 @@ void pump_sequence_backward(){
  *    The pin numbers for the pumpDirection and the pumpEnable
  */
 void updatePumpState(boolean pumpPower, boolean pumpDLR){
-  Serial.println("updating pump state");
+  SerialPrintLN(F("updating pump state"));
   pumpForw = pumpDLR;
   digitalWrite(pumpDirection, pumpForw);
   pumpOn = pumpPower;
@@ -926,7 +947,7 @@ void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* 
     timestamp(t);
     String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
-    Serial.println(myStr);    
+    SerialPrintLN(myStr);    
     logFile.close();
   }
 }
@@ -986,7 +1007,7 @@ void LogPrint(module moduleName, log_level logLevel, char logData[])
     timestamp(t);
     String myStr = t + ", " + (String)level + ", "+ (String)logData;
     logFile.println(myStr);
-    Serial.println(myStr);    
+    SerialPrintLN(myStr);    
     logFile.close();
   }
 }

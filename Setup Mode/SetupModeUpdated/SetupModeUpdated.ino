@@ -55,9 +55,30 @@ RTC_DS3231 rtc;
 #define reverse_flush_time_address 12
 #define pump_startup_time_address 14
 
+// Pins
+//If adding more pins make sure to update number of pins and the arrays below
+#define syringePin1 2
+#define syringePin2 3
+#define syringePin3 4
+#define syringePin4 5
+#define syringePin5 6
+#define syringePin6 7
+#define syringePin7 8
+#define syringePin8 9
+
 int curr_syringe = 0;
 int number_syringes = 0;
 int syringe_table_start = 0;
+//Pin definition
+#define mosfestNumPins 4
+const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
+#define selectNumPins 4
+const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
+
+// Define Marco to make the Operation Mode and SetupMode compatible
+// In Setupt mode the Serial print should always work
+#define SerialPrintLN(stream) if( 1 == 1) { Serial.println(stream);}
+#define SerialPrint(stream) if( 1 == 1) { Serial.print(stream);}
 
 
 enum log_level {
@@ -258,6 +279,41 @@ void initRTC()
 }
 
 /*
+ * Function: initSyringes()
+ * 
+ * Description: Sets all the syringe pins as outputs and make sure they are set low
+ * 
+ */
+void initSyringes()
+{
+  for (int i =0; i< (mosfestNumPins + selectNumPins); i++)
+  {
+    //First set all the mosfet pins
+    //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
+    if(i < mosfestNumPins)
+    {
+       SerialPrint(F("Mosfet: "));
+       SerialPrintLN(mosfetPins[i]);
+       pinMode(mosfetPins[i], OUTPUT);
+       digitalWrite(mosfetPins[i], LOW);  
+    }
+    // make sure to set all the selector pins. Selector pins select which syringe inside
+    // of each J componenent piece. (connected to NPN type mosfet
+    else 
+    {
+       SerialPrint(F("selector: "));
+       SerialPrintLN(selectPins[i-mosfestNumPins]);
+       pinMode(selectPins[i-mosfestNumPins], OUTPUT);
+       digitalWrite(selectPins[i-mosfestNumPins], LOW);  
+    }
+    
+  }
+  //Make sure the ports have time to settle
+  LogPrint(SYSTEM, LOG_INFO, F("Done with init of syringe pins"));
+  delay(500);
+}
+
+/*
  * Function: initPeripherals()
  * 
  * Description: Calls all the initalization functions 
@@ -266,6 +322,8 @@ void initPeripherals()
 {
   initSDcard();
   initRTC();  
+  // Prevent actuationSyringes by accident
+  initSyringes();
   initEEPROM();
 }
 

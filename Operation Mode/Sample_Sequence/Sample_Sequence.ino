@@ -2,9 +2,25 @@
 //A3 is pump enable 
 //A2 is pump direction
 
+#define syringePin1 2
+#define syringePin2 3
+#define syringePin3 4
+#define syringePin4 5
+#define syringePin5 6
+#define syringePin6 7
+#define syringePin7 8
+#define syringePin8 9
+
+
 //these LEDs are for testing purposes
 #define pumpDirection A2 //green LED
 #define pumpEnable A3 //blue LED
+
+//Pin definition
+#define mosfestNumPins 4
+const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
+#define selectNumPins 4
+const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
 
 
 boolean pumpOn = false;
@@ -12,9 +28,10 @@ boolean pumpOn = false;
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
 
-int forward_flush_time = 5000;
-int reverse_flush_time = 2000;
+int forward_flush_time = 3000;
+int reverse_flush_time = 1000;
 int pump_start_time = 2000;
+int curr_syringe = 0;
 
 
 
@@ -23,8 +40,8 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  pinMode(pumpDirection, OUTPUT);
-  pinMode(pumpEnable, OUTPUT);  
+  initPump();
+  initSyringes();
 }
 
 void loop() {
@@ -35,9 +52,21 @@ void loop() {
 void sampleSequence()
 {
   pump_sequence_forward();  
-  //syringeActuation();
+  syringe_actuation();
   // Start pumping in the reverse direction
   pump_sequence_backward();
+  curr_syringe++;
+}
+
+/*
+ * Function: initPump()
+ * 
+ * Description: Intalizes pump pins to output
+ */
+void initPump()
+{
+  pinMode(pumpDirection, OUTPUT);
+  pinMode(pumpEnable, OUTPUT);
 }
 
 /*
@@ -106,5 +135,65 @@ void updatePumpState(boolean pumpPower, boolean pumpDLR){
   pumpOn = pumpPower;
   digitalWrite(pumpEnable, pumpOn);
 }
+
+void syringe_actuation()
+{
+  int pinHigh = 0;
+  int pinLow = 0;
+
+  Serial.println(curr_syringe/4);
+  pinHigh = mosfetPins[(int)curr_syringe/4];
+
+  Serial.print("modolo: ");
+  Serial.println(curr_syringe%(mosfestNumPins));
+  pinLow = selectPins[curr_syringe%(selectNumPins)];
+ 
+  Serial.print("pinHigh is ");
+  Serial.println(pinHigh);
+  Serial.print("PinLow is ");
+  Serial.println(pinLow);
+  digitalWrite(pinHigh, HIGH);
+  digitalWrite(pinLow, HIGH);
+  //Need to figure out the delay for actuation the syringe
+  delay(2000);
+  digitalWrite(pinHigh, LOW);
+  digitalWrite(pinLow, LOW);  
+}
+
+/*
+ * Function: initSyringes()
+ * 
+ * Description: Sets all the syringe pins as outputs and make sure they are set low
+ * 
+ */
+void initSyringes()
+{
+  for (int i =0; i< (mosfestNumPins + selectNumPins); i++)
+  {
+    //First set all the mosfet pins
+    //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
+    if(i < mosfestNumPins)
+    {
+       Serial.print("Mosfet: ");
+       Serial.println(mosfetPins[i]);
+       pinMode(mosfetPins[i], OUTPUT);
+       digitalWrite(mosfetPins[i], LOW);  
+    }
+    // make sure to set all the selector pins. Selector pins select which syringe inside
+    // of each J componenent piece. (connected to NPN type mosfet
+    else 
+    {
+       Serial.print("selector: ");
+       Serial.println(selectPins[i-mosfestNumPins]);
+       pinMode(selectPins[i-mosfestNumPins], OUTPUT);
+       digitalWrite(selectPins[i-mosfestNumPins], LOW);  
+    }
+    
+  }
+  //Make sure the ports have time to settle
+  //LogPrint(SYSTEM, LOG_INFO, F("Done with init of syringe pins"));
+  delay(500);
+}
+
 
 
