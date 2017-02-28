@@ -16,6 +16,8 @@ const int b = 0.0002378;
 const int m = 0.199992;
 const int b2 = 0.00386;
 
+int sensor_values[10]={44,45,46,47,47,48,49,50,50,51};
+
 int eeAddress=0;
 //depth = (10m/14.57psi)*pressure
 //v_arduino = a*v_sensor + b;
@@ -25,13 +27,13 @@ int eeAddress=0;
 void setup(){
 
   Serial.begin(9600);
-  
+   for (int i=0; i<10; i++){
+  Serial.print(sensor_values[i]);
+   } // closes for loop
 }
 
 void loop(){
-
- mV_to_meters();
- meters_to_mV();
+   mV_to_meters();
 }
 
 
@@ -45,12 +47,15 @@ void mV_to_meters(){
   int pv_arduino;
   int pv_sensor;
 
-  Serial.print("Read mV from EEPROM");
+  Serial.print("Read mV from array");
+  
+  for (int i=0; i<10; i++){
+    
+  p_arduino = sensor_values[i];
   pv_arduino = (p_arduino*5)/1023; //v_arduino to pv_arduino
   pv_sensor = (pv_arduino - b)/a; //pv_arduino to pv_sensor
   pressure = ((pv_sensor*(10/v_power)-b2)/m);
-  depth = (pressure-14.7)*10/14.57;
-  
+  depth = (pressure)*10/14.57;
   
   Serial.println("Millivolts to meters");
   Serial.print("Millivolts: ");
@@ -58,8 +63,12 @@ void mV_to_meters(){
   Serial.print("Meters:  ");
   Serial.print(depth);
   Serial.println("");
-}
+  } //closes for loop
+  
  
+} // closes function 
+
+//this subfunction reads from the SD and writes to EEPROM
 void meters_to_mV(){
   //reverse of the above subfunction
   //given depth by client
@@ -68,8 +77,9 @@ void meters_to_mV(){
   int p_arduino;
   int pv_arduino;
   int pv_sensor;
+
   
-  pressure = depth * 14.57/10);
+  pressure = (depth * 14.57/10);
   pv_sensor = (v_power/10)*(pressure*m + b2);
   pv_arduino = pv_sensor*a + b;
   p_arduino = (pv_arduino*1023)/5;
@@ -84,7 +94,6 @@ void meters_to_mV(){
   Serial.print(pv_arduino);
   Serial.println("P_arduino");
   Serial.print(p_arduino);
-  
-  
-}
+ 
+} //closes function 
 
