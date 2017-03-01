@@ -143,7 +143,8 @@ void initSDcard()
   // CHange back to 10 for Pro mini
   if (!SD.begin(CS_PIN)) {
     Serial.println(F("initialization failed!"));
-    return;
+    LogPrint(SYSTEM, LOG_ERROR, F("SD card initialization failed!"));
+    while (1);
   }
   Serial.println(F("initialization done."));
 

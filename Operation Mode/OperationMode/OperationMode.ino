@@ -110,7 +110,6 @@ enum module {
 
 //Global Variables
 time_t system_start = 0;
-time_t curr_sample_time = 0;
 int curr_syringe = 0;
 int number_syringes = 0;
 int syringe_table_start = 0;
@@ -196,7 +195,8 @@ void mainLoop() {
   
   // set state to 1
   curr_state = STATE1;  
-  int curr_pressure_level = 0;
+  int curr_pressure_level = 0;  
+  time_t curr_sample_time = 0;
   
   while(1) {
   
@@ -243,6 +243,8 @@ void mainLoop() {
         // read time from RTC to sync clock
         DateTime now = rtc.now();
         time_t nowT = now.unixtime();
+        Serial.println(nowT);
+        Serial.println(curr_sample_time);
         
         // if curr_time is not past sample time
         if (nowT < curr_sample_time)
@@ -302,6 +304,7 @@ void mainLoop() {
         
         // set the pressure to check for and time to check for
         curr_pressure_level = currentSyringePressure();
+        curr_sample_time = currentSyringeTime();
         SerialPrintLN(curr_pressure_level);
         
         // Log setting state to 2
@@ -375,6 +378,21 @@ int currentSyringePressure()
   //Get the current syringe read in EEPROM the pressure 
   EEPROM.get(syringe_table_start + (curr_syringe%100)*SIZE_OF_SYRINGE+SIZE_OF_TIME, pressureNow);
   return pressureNow;
+}
+
+/*
+ * Function: currentSyringeTime()
+ * 
+ * Description: Returns the start time of the current syringe
+ * 
+ * Returns:
+ * time_t -> Returns the start time of the current syringe
+ */
+time_t currentSyringeTime()
+{
+  time_t time_get = 0;
+  EEPROM.get(syringe_table_start + (curr_syringe%100)*SIZE_OF_SYRINGE, time_get);
+  return time_get;
 }
 
 void incrementSyringe()
@@ -539,24 +557,7 @@ void initRTC()
     LogPrint(SYSTEM, LOG_ERROR, F("Could not find RTC"));
     while (1);
   }
-  //Since this is the operation mode, only adjust the RTC time if it was complied recently
-  //The assumption is made that the Setup Mode was recently run before this so the RTC vary should not 
-  //Be that much
-  time_t compileTime = DateTime(F(__DATE__), F(__TIME__)).unixtime();
-  DateTime now = rtc.now();
-  time_t nowT = now.unixtime();
-  long int timeDif = nowT - compileTime;
-  // Get the absolute value
-  timeDif = (timeDif * timeDif)/timeDif;
-  // Reset the RTC to the compile time if the difference is less than 10 seconds
-  // This prevents the RTC from reseting if the arudino shuts off and gets woken back up 
-  if ( timeDif < 10)
-  {
-    SerialPrintLN(F("Adjusting"));
-    LogPrint(SYSTEM, LOG_INFO, F("Adj rtc"));
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
-
+  
   SerialPrint(F("RTC value equals: "));
   String t ="";
   timestamp(t);
@@ -575,7 +576,8 @@ void initSDcard()
   // CHange back to 10 for Pro mini
   if (!SD.begin(CS_PIN)) {
     SerialPrintLN(F("initialization failed!"));
-    return;
+    LogPrint(SYSTEM, LOG_ERROR, F("SD card initialization failed!"));
+    while (1);
   }
   SerialPrintLN(F("initialization done."));
 
