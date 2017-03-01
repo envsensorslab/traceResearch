@@ -1,0 +1,61 @@
+Creating by Alex Agudelo & Fizzah Shaikh
+3/1/2017
+
+There are 3 files:
+SetupMode
+RTC_quicktime
+OperationMode
+
+The first file to run is the Setup Mode. 
+- Resets EEPROM to the values in the config file and the sample data table. Basically starts the code from scatch
+
+The second file to run is the RTC_quicktime.
+- A minimal sized file to reduce the time from file compilation and file execution to allow a more accuratly set RTC
+
+The third file to run is the OperationMode.
+- Actually conducts the sampling and reading of the sensors
+
+
+A. Setup Mode
+1. Before running the setup mode correctly set the configuration variables in the configuration file in the SD card. The configuraiton file is 
+called configFl.txt. These values affect the number of syringes being used, which syringe to start on, the delays etc
+	- In regards to the system start time, follow the note below regarding timezones
+2. Set the sample data table values in the sampleTB.csv file. 
+	- Make sure to follow the csv format that is required. 
+	- IMPORTANT(time zone issues):
+		- The RTC thinks it is in GMT time. Therefore, when the aurdino asks the RTC for the current time, then it will return the GMT time
+			for the compiled time. Therefore, for the system start time and the syringe start times. Follow my example.
+Used this website (or any epoch time): https://www.epochconverter.com/
+In the boxes that have the Mon, Day, Tr, Hr, Min, Sec put the time you want to start sampling from. Then click Human date to Timestamp.
+After, that copy the Epoch timestamp as the start time. 
+
+Example:
+If the system start time should be (In Eastern Standard Time):
+Wed, 01 Mar 2017 12:35:34 GMT (3/1/2017 12:35:34)
+then the Epoch time should be
+1488371734.
+
+The reason why this is happening is because even though the compile time is in the local time, say 3:40pm. The RTC thinks it is receiving the GMT,
+time and therefore it believes that it is being passed the GMT time of 3:40pm. 
+
+3. Set the depths on the second column of the sampleTB.csv file in meters
+
+4. Run the SetupMode and it will either load all the syringes or if there are more than 100 syringes then it will load the first 100 syringes
+
+B. RTC_Quicktime
+1. There is nothing to configure, just run this file
+
+C. Operation Mode
+Operation Mode
+
+When system starts, will wait for system start time to be reached. 
+
+Runs Operation Mode and iterates syringes one at a time. 
+
+State 1- Loads current syringe information to memory
+
+State 2- Waits for syringe start time to be reached, polls sensor for pressure value
+
+State 3- Logs data and increments syringe
+
+Logs data into DATA.txt
