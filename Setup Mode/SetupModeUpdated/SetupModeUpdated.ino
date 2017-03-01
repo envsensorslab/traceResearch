@@ -123,7 +123,7 @@ void setup() {
   curr_syringe = 50;
   syringeIteration();
 
-  LogPrint(DATA, LOG_DEBUG, F("Setup Routine Done"));
+  LogPrint(SYSTEM, LOG_DEBUG, F("Setup Routine Done"));
   
 }
 

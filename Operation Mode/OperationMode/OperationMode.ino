@@ -48,7 +48,7 @@ char sampleDataTableName[] = "sampleTB.csv";
 char dataLogFile[] = "data.csv";
 char systemLogFile[] = "system.txt";
 char exampleFileName[] = "example.txt";
-char stateLogFile[] = "state.txt";
+char stateLogFile[] = "system.txt";
 
 // Enum for different states
 enum state {
