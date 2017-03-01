@@ -7,10 +7,10 @@
 
 #include <EEPROM.h>
 
-const int pressurePin = A7;    // pressure sensor 
+#define pressurePin A7   // pressure sensor 
 
 
-float v_power = 9.75;
+const float v_power = 9.75;
 const float a = 0.066466;
 const float b = 0.02523;
 const float m = 0.199992;
@@ -34,11 +34,17 @@ void setup(){
 }
 
 void loop(){
-   meters_to_mV();
+  for(int i =0; i < SENSOR_SIZE; i++)
+  {
+   int value = meters_to_mV(sensor_values[i]);
+   Serial.print("Return value= ");
+   Serial.println(value);
+   delay(1000);
+  }
 }
 
 
-void mV_to_meters(){
+float mV_to_meters(){
   //millivolts to meters (v_arduino to depth)
   //given sensor mV
   
@@ -47,16 +53,15 @@ void mV_to_meters(){
   float p_arduino;
   float pv_arduino;
   float pv_sensor;
-
+  int sensor_read = getVoltage(pressurePin);
   Serial.print("Read mV from array");
   
-  for (int i=0; i<SENSOR_SIZE; i++){
     
-  p_arduino = sensor_values[i];
+  p_arduino = sensor_read;
   pv_arduino = (p_arduino*5)/1023; //v_arduino to pv_arduino
   pv_sensor = (pv_arduino - b)/a; //pv_arduino to pv_sensor
   pressure = ((pv_sensor*(10/v_power)-b2)/m);
-  depth = (pressure)*10/14.57;
+  depth = (pressure-14.7)*10/14.57;
   
   Serial.println("Millivolts to meters");
   Serial.print("Millivolts: ");
@@ -64,39 +69,72 @@ void mV_to_meters(){
   Serial.print("Meters:  ");
   Serial.print(depth);
   Serial.println("");
-  } //closes for loop
+
+  // Makes sure that it rounds off correctly
+  return depth;
   
  
 } // closes function 
 
-//this subfunction reads from the SD and writes to EEPROM
-void meters_to_mV(){
+/*
+ * Function: meter_to_mV(float meters)
+ * 
+ * Description: Given the value in meters it converts it to the arudino analog read value
+ * 
+ * Arguments:
+ * float meters -> The meter value that needs to be converted to the arudino analog read
+ * 
+ * Returns:
+ * float -> The Pressure associated with the meter value
+ * 
+ */
+int meters_to_mV(float meters){
   //reverse of the above subfunction
   //given depth by client
   float pressure;
-  float depth;
   float p_arduino;
   float pv_arduino;
   float pv_sensor;
 
-  for (int i=0; i<SENSOR_SIZE; i++){
-    pressure = ((sensor_values[i] * 14.57/10) + 14.7);
-    pv_sensor = (v_power/10)*(pressure*m + b2);
-    pv_arduino = pv_sensor*a + b;
-    p_arduino = (pv_arduino*1023)/5;
+
+  pressure = ((meters * 14.57/10) + 14.7);
+  pv_sensor = (v_power/10)*(pressure*m + b2);
+  pv_arduino = pv_sensor*a + b;
+  p_arduino = (pv_arduino*1023)/5;
+
   
-    
-    Serial.print("Depth: ");
-    Serial.println(sensor_values[i]);
-    Serial.print("Pressure: ");
-    Serial.println(pressure);
-    Serial.print("PV_sensor:  ");
-    Serial.println(pv_sensor);
-    Serial.print("PV_arduino: ");
-    Serial.println(pv_arduino);
-    Serial.print("P_arduino: ");
-    Serial.println(p_arduino);
-  }
+  Serial.print(F("Depth: "));
+  Serial.println(meters);
+  Serial.print(F("Pressure: "));
+  Serial.println(pressure);
+  Serial.print(F("PV_sensor:  "));
+  Serial.println(pv_sensor);
+  Serial.print(F("PV_arduino: "));
+  Serial.println(pv_arduino);
+  Serial.print(F("P_arduino: "));
+  Serial.println(p_arduino);
+
+  // makes sure it rounds off correctly
+  return p_arduino + .5;
  
 } //closes function 
+
+/*
+ * Function:getVoltage(int pin)
+ * 
+ * Description: Given a pin, return the analog value of that pin
+ * 
+ * Argument:
+ * int -> The pin number that should be read from
+ * 
+ * Return:
+ * The analog value of that pin
+ */
+int getVoltage(int pin)
+{
+  Serial.print(F("Analog read: "));
+  Serial.println(pressurePin);
+  return(analogRead(pressurePin));
+}
+
 

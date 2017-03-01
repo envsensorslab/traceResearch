@@ -93,8 +93,8 @@ enum module {
 #define SerialPrint(stream) if( PC_COMMS == 1) { Serial.print(stream);}
 
 //Pins (Pin value changes based on board)
-#define pressurePin 7
-#define temperaturePin 0
+#define pressurePin A7
+#define temperaturePin A6
 #define pumpDirection A2 //green LED
 #define pumpEnable A3 //orange LED
 
@@ -129,6 +129,14 @@ boolean pumpForw = true;
 const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
 #define selectNumPins 4
 const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
+
+//Calibration Calcuations
+const float v_power = 9.75;
+const float a = 0.066466;
+const float b = 0.02523;
+const float m = 0.199992;
+const float b2 = 0.00386;
+
 
 /*
  * Function: Setup()
@@ -247,18 +255,11 @@ void mainLoop() {
         else
         {
           int pressureValue = 0;
-          //counter is being used as a debug tool, since I can't actually measure the pin values
-          //The pressure will equal after 5 counts
-          int counter = 0;
+          // Loops until the condition is meet, aka the pressure the desired pressure it hit
           while(curr_state == STATE2)
           {        
             LogPrint(SYSTEM, LOG_DEBUG, F("Starting while loop"));    
             pressureValue = getVoltage(pressurePin);
-            //Test
-            if (counter == 3)
-            {
-              pressureValue = curr_pressure_level;
-            }
             if (pressureValue == curr_pressure_level)
             {
               //Log Current Pressure
@@ -273,7 +274,12 @@ void mainLoop() {
             {
               //sleep for a couple of seconds
               LogPrint(SYSTEM, LOG_INFO, F("Sleeping to poll the sensor again"));
-              counter++;              
+              SerialPrint(F("Looking for: "))
+              SerialPrintLN(curr_pressure_level);    
+              SerialPrint(F("Current Pressure: "));
+              SerialPrintLN(pressureValue);               
+              int temp_value = getVoltage(temperaturePin);
+     
               delay(500); 
             }         
           }
@@ -686,13 +692,15 @@ void syringeIteration(){
         SerialPrintLN(samTime);
         SerialPrint(F("y: "));
         SerialPrintLN(y);
+        SerialPrint(F("Converted pressure: "));
+        SerialPrintLN(meters_to_mV(y));
         SerialPrint(F("Address = :"));
         SerialPrintLN(syringe_table_start + (i*SIZE_OF_SYRINGE));        
         SerialPrintLN();
 
         // Put the csv values into the EEPROM
         EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
-        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + SIZE_OF_TIME, y);
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + SIZE_OF_TIME, meters_to_mV(y));
 
         
       }
@@ -849,6 +857,48 @@ bool readLine(File &f, char* line, size_t maxLen) {
   }
   return false; // line too long
 }
+
+/*
+ * Function: meter_to_mV(float meters)
+ * 
+ * Description: Given the value in meters it converts it to the arudino analog read value
+ * 
+ * Arguments:
+ * float meters -> The meter value that needs to be converted to the arudino analog read
+ * 
+ * Returns:
+ * float -> The Pressure associated with the meter value
+ * 
+ */
+int meters_to_mV(float meters){
+  //reverse of the above subfunction
+  //given depth by client
+  float pressure;
+  float p_arduino;
+  float pv_arduino;
+  float pv_sensor;
+
+
+  pressure = ((meters * 14.57/10) + 14.7);
+  pv_sensor = (v_power/10)*(pressure*m + b2);
+  pv_arduino = pv_sensor*a + b;
+  p_arduino = (pv_arduino*1023)/5;
+
+  
+  SerialPrint(F("Depth: "));
+  SerialPrintLN(meters);
+  SerialPrint(F("Pressure: "));
+  SerialPrintLN(pressure);
+  SerialPrint(F("PV_sensor:  "));
+  SerialPrintLN(pv_sensor);
+  SerialPrint(F("PV_arduino: "));
+  SerialPrintLN(pv_arduino);
+  SerialPrint(F("P_arduino: "));
+  SerialPrintLN(p_arduino);
+
+  return p_arduino + .5;
+ 
+} //closes function
 
 // This assumes the following format (example from table)
 ////////////////////////////////////////////////////

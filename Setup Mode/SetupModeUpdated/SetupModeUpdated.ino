@@ -66,6 +66,8 @@ RTC_DS3231 rtc;
 #define syringePin7 8
 #define syringePin8 9
 
+#define pressurePin A7   // pressure sensor 
+
 int curr_syringe = 0;
 int number_syringes = 0;
 int syringe_table_start = 0;
@@ -94,7 +96,12 @@ enum module {
   STATE,
 };
 
-//Temp variables for testing
+//Calibration constants
+const float v_power = 9.75;
+const float a = 0.066466;
+const float b = 0.02523;
+const float m = 0.199992;
+const float b2 = 0.00386;
 
 /*
  * Function: setup()
@@ -398,13 +405,15 @@ void syringeIteration(){
         Serial.println(samTime);
         Serial.print(F("y: "));
         Serial.println(y);
+        Serial.print(F("Converted pressure: "));
+        Serial.println(meters_to_mV(y));
         Serial.print(F("Address = :"));
         Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
         Serial.println();
 
         // Put the csv values into the EEPROM
         EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE), samTime);
-        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + SIZE_OF_TIME, y);
+        EEPROM.put(syringe_table_start + (i*SIZE_OF_SYRINGE) + SIZE_OF_TIME, meters_to_mV(y));
 
         
       }
@@ -422,6 +431,8 @@ void syringeIteration(){
   //unsigned long totTime = millis() - startTime;
   //Serial.println(totTime);
 }
+
+
 
 /*
  * Function: readline()
@@ -487,6 +498,47 @@ bool readVals(long int* v1, int* v2) {
   return str != ptr;  // true if number found
 }
 
+/*
+ * Function: meter_to_mV(float meters)
+ * 
+ * Description: Given the value in meters it converts it to the arudino analog read value
+ * 
+ * Arguments:
+ * float meters -> The meter value that needs to be converted to the arudino analog read
+ * 
+ * Returns:
+ * float -> The Pressure associated with the meter value
+ * 
+ */
+int meters_to_mV(float meters){
+  //reverse of the above subfunction
+  //given depth by client
+  float pressure;
+  float p_arduino;
+  float pv_arduino;
+  float pv_sensor;
+
+
+  pressure = ((meters * 14.57/10) + 14.7);
+  pv_sensor = (v_power/10)*(pressure*m + b2);
+  pv_arduino = pv_sensor*a + b;
+  p_arduino = (pv_arduino*1023)/5;
+
+  
+  Serial.print(F("Depth: "));
+  Serial.println(meters);
+  Serial.print(F("Pressure: "));
+  Serial.println(pressure);
+  Serial.print(F("PV_sensor:  "));
+  Serial.println(pv_sensor);
+  Serial.print(F("PV_arduino: "));
+  Serial.println(pv_arduino);
+  Serial.print(F("P_arduino: "));
+  Serial.println(p_arduino);
+
+  return p_arduino + .5;
+ 
+} //closes function 
 
 
 // Below is an example from the DATA log file
