@@ -124,12 +124,14 @@ boolean pumpOn = false;
 boolean pumpForw = true;
 
 //Pin definition
+// Realized in the Syringe Actuation function,
+// Not fully modular yet, adding more Pins will break it,
 #define mosfestNumPins 4
 const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
 #define selectNumPins 4
 const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
 
-//Calibration Calcuations
+//Pressure Calibration Constants
 const float v_power = 9.75;
 const float a = 0.066466;
 const float b = 0.02523;
@@ -215,10 +217,6 @@ void mainLoop() {
         String output2 = "Curr_syringe = " + (String)curr_syringe;
         LogPrint(SYSTEM, LOG_INFO, output2.c_str());
         LogPrint(DATA, LOG_INFO, output.c_str());
-
-
-        //Need to log data
-        // Figure out exactly when data should be sampled !!!!!!!!!!!!!!
         
         // start the sample sequence
         sampleSequence();
@@ -259,8 +257,7 @@ void mainLoop() {
           int pressureValue = 0;
           // Loops until the condition is meet, aka the pressure the desired pressure it hit
           while(curr_state == STATE2)
-          {        
-            LogPrint(SYSTEM, LOG_DEBUG, F("Starting while loop"));    
+          {          
             pressureValue = getVoltage(pressurePin);
             if (pressureValue == curr_pressure_level)
             {
@@ -305,6 +302,7 @@ void mainLoop() {
         // set the pressure to check for and time to check for
         curr_pressure_level = currentSyringePressure();
         curr_sample_time = currentSyringeTime();
+        SerialPrint(F("Current Pressure: "));
         SerialPrintLN(curr_pressure_level);
         
         // Log setting state to 2
@@ -395,15 +393,20 @@ time_t currentSyringeTime()
   return time_get;
 }
 
+/*
+ * Function: incrementSyringe()
+ * 
+ * Description: increments the current syringe and when necessary it executes a syringe iteration
+ */
 void incrementSyringe()
 {
+  LogPrint(SYSTEM, LOG_DEBUG, "Start incrementSyringe");
   //increment curr_syringe by 1
   SerialPrintLN(curr_syringe);
   curr_syringe++;
   writeCurrSyringeToEEPROM(curr_syringe);
   SerialPrint(F("Current Syringe: "));
   SerialPrintLN(curr_syringe);
-  //if curr_syringe == 0 or curr_syringe == 50
   if (curr_syringe%100 == 0 || curr_syringe%100 == 50)
   {
     LogPrint(SYSTEM, LOG_INFO, F("Incrementing EEPROM"));
@@ -463,6 +466,7 @@ void initPeripherals()
  */
 void initSyringes()
 {
+  LogPrint(SYSTEM, LOG_INFO, F("Start initSyringes"));
   for (int i =0; i< (mosfestNumPins + selectNumPins); i++)
   {
     //First set all the mosfet pins
@@ -498,6 +502,7 @@ void initSyringes()
  */
 void loadConfigVars()
 {
+  LogPrint(SYSTEM, LOG_INFO, F("Start loadConfigVars"));
   String output = "";
   
   //load system start from EEPROM
@@ -557,7 +562,27 @@ void initRTC()
     LogPrint(SYSTEM, LOG_ERROR, F("Could not find RTC"));
     while (1);
   }
-  
+
+  //Since this is the operation mode, only adjust the RTC time if it was complied recently
+  //The assumption is made that the Setup Mode was recently run before this so the RTC vary should not 
+   //Be that much
+   time_t compileTime = DateTime(F(__DATE__), F(__TIME__)).unixtime();
+   DateTime now = rtc.now();
+   time_t nowT = now.unixtime();
+   long int timeDif = nowT - compileTime;
+   // Get the absolute value
+   timeDif = (timeDif * timeDif)/timeDif;
+   // Reset the RTC to the compile time if the difference is less than 10 seconds
+   // This prevents the RTC from reseting if the arudino shuts off and gets woken back up 
+   if ( timeDif < 20)
+   {
+     SerialPrintLN(F("Adjusting"));
+     LogPrint(SYSTEM, LOG_INFO, F("Adj rtc"));
+     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)) + TimeSpan(0,0,0,12));
+   }
+
+
+   
   SerialPrint(F("RTC value equals: "));
   String t ="";
   timestamp(t);
@@ -734,10 +759,11 @@ void syringeActuation()
   int pinHigh = 0;
   int pinLow = 0;
 
+  // Need to use the Marco to divide by 4 to make it fully modular.
+  // Test before changin
   SerialPrintLN(curr_syringe/4);
   pinHigh = mosfetPins[(int)curr_syringe/4];
 
-  SerialPrint(F("modolo: "));
   SerialPrintLN(curr_syringe%(mosfestNumPins));
   pinLow = selectPins[curr_syringe%(selectNumPins)];
  
@@ -776,6 +802,7 @@ void sampleSequence()
  *    forward_flush_time: which is a global variable read in from the EEPROM
  */
 void pumpSequenceForward(){
+  LogPrint(SYSTEM, LOG_INFO, F("Start pumpSequenceForware"));
   SerialPrintLN(F("Start forward sequence"));
 
   pumpForw = true;
@@ -797,6 +824,7 @@ void pumpSequenceForward(){
  *  reverse_flush_time: which is a global variable read in from the EEPROM
  */
 void pumpSequenceBackward(){
+  LogPrint(SYSTEM, LOG_DEBUG, F("Start pumpSequnceBackward"));
   //when timer hits value, reverse pin direction
   //set direction pin to low  
   //set pump enable to low
@@ -826,6 +854,7 @@ void pumpSequenceBackward(){
  *    The pin numbers for the pumpDirection and the pumpEnable
  */
 void updatePumpState(boolean pumpPower, boolean pumpDLR){
+  LogPrint(SYSTEM, LOG_DEBUG, F("Start updatePumpState"));
   SerialPrintLN(F("updating pump state"));
   pumpForw = pumpDLR;
   digitalWrite(pumpDirection, pumpForw);
@@ -873,6 +902,7 @@ bool readLine(File &f, char* line, size_t maxLen) {
  * 
  */
 int meters_to_mV(float meters){
+  LogPrint(SYSTEM, LOG_DEBUG, F("Start meters_to_mV"));
   //reverse of the above subfunction
   //given depth by client
   float pressure;
