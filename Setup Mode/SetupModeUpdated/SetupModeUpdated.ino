@@ -118,7 +118,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   
-  
+  `
   initPeripherals();  
   LogPrint(SYSTEM, LOG_DEBUG, F("Setup Routine Started"));
   curr_syringe = 0;

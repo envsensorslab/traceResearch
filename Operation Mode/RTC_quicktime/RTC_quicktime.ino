@@ -5,7 +5,11 @@
 
 #define timeValSize 3
 
+<<<<<<< Updated upstream
 time_t timeVal[timeValSize] = {1488452181, 1488450980, 1488451780};
+=======
+time_t timeVal[timeValSize] = {1488469844, 1488469844+400, 1488469844+1000};
+>>>>>>> Stashed changes
 
 enum module {
   SYSTEM
