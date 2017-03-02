@@ -1,4 +1,5 @@
 /*
+  Setup Mode configures the device to the user specifications and sets up the device for testing
   Layout is meant for Arudino Pro Mini
 
  * SD card attached to SPI bus as follows:
@@ -37,7 +38,7 @@ char exampleFileName[] = "example.txt";
 char stateLogFile[] = "state.txt";
 RTC_DS3231 rtc;
 
-// Config define varaibles
+// Config define variables
 #define SIZE_OF_SYRINGE 6
 #define SIZE_OF_STRING 20
 //This is the size of the time portion in the EEPROM
@@ -78,11 +79,11 @@ const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
 const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
 
 // Define Marco to make the Operation Mode and SetupMode compatible
-// In Setupt mode the Serial print should always work
+// In Setup mode the Serial print should always work
 #define SerialPrintLN(stream) if( 1 == 1) { Serial.println(stream);}
 #define SerialPrint(stream) if( 1 == 1) { Serial.print(stream);}
 
-
+//define log levels for system feedback
 enum log_level {
   LOG_ERROR,
   LOG_WARNING,
@@ -90,6 +91,7 @@ enum log_level {
   LOG_DEBUG,
 };
 
+//define module levels for system feedback
 enum module {
   DATA,
   SYSTEM,
@@ -115,9 +117,10 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-
-
+  
+  
   initPeripherals();  
+  LogPrint(SYSTEM, LOG_DEBUG, F("Setup Routine Started"));
   curr_syringe = 0;
   syringeIteration();
   curr_syringe = 50;
@@ -306,7 +309,7 @@ void initSyringes()
        digitalWrite(mosfetPins[i], LOW);  
     }
     // make sure to set all the selector pins. Selector pins select which syringe inside
-    // of each J componenent piece. (connected to NPN type mosfet
+    // of each J componenent piece. (connected to NPN type mosfet)
     else 
     {
        SerialPrint(F("selector: "));
@@ -325,6 +328,7 @@ void initSyringes()
  * Function: initPeripherals()
  * 
  * Description: Calls all the initalization functions 
+ * Loads all hardware attachments  
  */
 void initPeripherals()
 {
