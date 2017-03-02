@@ -5,7 +5,7 @@
 
 #define timeValSize 3
 
-time_t timeVal[timeValSize] = {1488447936, 1488447936 + 400, 1488447936 + 1000};
+time_t timeVal[timeValSize] = {1488450780, 1488450980, 1488451780};
 
 enum module {
   SYSTEM
