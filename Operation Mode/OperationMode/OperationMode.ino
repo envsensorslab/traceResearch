@@ -182,7 +182,7 @@ void loop() {
     int long timeDif = system_start - nowT;
     sleepForTime(timeDif);
   }
-      
+      while (1);
 }
 
 /*
