@@ -1,0 +1,9 @@
+Operation Mode
+
+When system starts, will wait for system start time to be reached. 
+Runs Operation Mode and iterates syringes one at a time. 
+State 1- Loads current syringe information to memory
+State 2- Waits for syringe start time to be reached, polls sensor for pressure value
+State 3- Logs data and increments syringe
+
+Logs data into DATA.txt

@@ -1,0 +1,168 @@
+﻿
+
+Libraries included: 
+- SPI.h
+- SD.h
+- RTClib.h
+- EEPROM.h
+- time.h
+
+Load file “sampleDataTableFile” from PC.
+SD card breakout board: Adafruit 5v ready breakout board. 
+Real time clock: 3231 rtc (Adafruit chronodot).
+
+Serial print:
+
+Initializing SD card…			SD card will start initializing
+Initialization failed			SD card failed to connect 
+Initialization done			SD card has connected	
+SD card init failed…remove		SD card has created an example file but cannot remove it 
+SD card init successfully		SD card has created and removed an example file
+SD card init failed…open		SD card cannot open the same file 
+
+Log print:
+Could not find config file		SD card cannot open the configuration file
+Could not open Sample Data File	
+Sample Data table File does not exist	
+
+Some notes:
+- For the config file:
+    - The start time should be the unixtime in the timezone that the code was complied
+
+
+
+Below is an example of what the output should look like. 
+The time, data and address can change depending on the configuration file.
+It would init the perhiperals, first check SD card and say done. Then if the RTC,
+was properly initalized it will print the current date and time. It should then, print out
+the EEPROM values that it is storing and then start iterating through the syringes.
+It should load the first 50 syringes, then print 
+"Starting syringeIteration"
+Then print the last 50 syringes. 
+The last line should be:
+2017/2/16 17:12:13, Debug, Setup Routine Done
+
+////////////////////////////////////////////////////////////////////////////////////
+Initializing SD card...initialization done.
+SD card init succesfully
+RTC value equals: 2017/2/16 17:10:52
+2017/2/16 17:10:52, Info, Sys start time: 1487263217
+2017/2/16 17:10:52, Info, # Syr: 152
+2017/2/16 17:10:52, Info, Curr Syringe : 0
+2017/2/16 17:10:52, Info, table start: 40
+2017/2/16 17:10:52, Info, For flush: 4
+2017/2/16 17:10:52, Info, Rev flush: 6
+2017/2/16 17:10:52, Info, Starting syringeIteration
+0
+x: 1487263337
+y: 1
+Address = :40
+
+1
+x: 1487263337
+y: 2
+Address = :46
+
+2
+x: 1487263337
+y: 3
+Address = :52
+
+3
+x: 1487263337
+y: 4
+Address = :58
+
+... Data cut to reduce length
+
+46
+x: 1487263337
+y: 47
+Address = :316
+
+47
+x: 1487263337
+y: 48
+Address = :322
+
+48
+x: 1487263337
+y: 49
+Address = :328
+
+49
+x: 1487263337
+y: 50
+Address = :334
+
+2017/2/16 17:10:54, Info, Starting syringeIteration
+50
+x: 1487263337
+y: 51
+Address = :340
+
+51
+x: 1487263337
+y: 52
+Address = :346
+
+52
+x: 1487263337
+y: 53
+Address = :352
+
+53
+x: 1487263337
+y: 54
+Address = :358
+
+.... Data cut to reduce length
+
+91
+x: 1487263337
+y: 92
+Address = :586
+
+92
+x: 1487263337
+y: 93
+Address = :592
+
+93
+x: 1487263337
+y: 94
+Address = :598
+
+94
+x: 1487263337
+y: 95
+Address = :604
+
+95
+x: 1487263337
+y: 96
+Address = :610
+
+96
+x: 1487263337
+y: 97
+Address = :616
+
+97
+x: 1487263337
+y: 98
+Address = :622
+
+98
+x: 1487263337
+y: 99
+Address = :628
+
+99
+x: 1487263337
+y: 100
+Address = :634
+
+
+2017/2/16 17:12:13, Debug, Setup Routine Done
+////////////////////////////////////////////////////////////////////////////////
