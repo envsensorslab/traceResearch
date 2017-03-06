@@ -18,7 +18,7 @@ RTC_DS3231 rtc;
 
 
 void setup() {
-Serial.begin(9600);
+  Serial.begin(9600);
 
   initRTC();
 }
@@ -27,7 +27,7 @@ void loop() {
   
   String t ="";
   timestamp(t);
-  //Serial.println(t);
+  Serial.println(t);
 
   for (int i=0; i<timeValSize; i++){
     timetest(timeVal[i]);
@@ -43,7 +43,7 @@ void initRTC()
   }
 
  
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)) + TimeSpan(0,0,0,12));
   //Serial.print(DateTime(F(__DATE__), F(__TIME__)).unixtime());
   Serial.print("RTC value equals: ");
   String t ="";

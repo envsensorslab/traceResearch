@@ -182,7 +182,6 @@ void loop() {
     int long timeDif = system_start - nowT;
     sleepForTime(timeDif);
   }
-      while (1);
 }
 
 /*
@@ -563,26 +562,6 @@ void initRTC()
     while (1);
   }
 
-  //Since this is the operation mode, only adjust the RTC time if it was complied recently
-  //The assumption is made that the Setup Mode was recently run before this so the RTC vary should not 
-   //Be that much
-   time_t compileTime = DateTime(F(__DATE__), F(__TIME__)).unixtime();
-   DateTime now = rtc.now();
-   time_t nowT = now.unixtime();
-   long int timeDif = nowT - compileTime;
-   // Get the absolute value
-   timeDif = (timeDif * timeDif)/timeDif;
-   // Reset the RTC to the compile time if the difference is less than 10 seconds
-   // This prevents the RTC from reseting if the arudino shuts off and gets woken back up 
-   if ( timeDif < 20)
-   {
-     SerialPrintLN(F("Adjusting"));
-     LogPrint(SYSTEM, LOG_INFO, F("Adj rtc"));
-     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)) + TimeSpan(0,0,0,12));
-   }
-
-
-   
   SerialPrint(F("RTC value equals: "));
   String t ="";
   timestamp(t);
