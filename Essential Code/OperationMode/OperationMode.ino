@@ -212,7 +212,7 @@ void mainLoop() {
         //Log Pressure
         int pressure_value = getVoltage(pressurePin);
         int temp_value = getVoltage(temperaturePin);
-        String output = (String)pressure_value + ", " + (String)temp_value;
+        String output = (String)pressure_value + ", " + (String)temp_value + ", " + (String)curr_syringe;
         String output2 = "Curr_syringe = " + (String)curr_syringe;
         LogPrint(SYSTEM, LOG_INFO, output2.c_str());
         LogPrint(DATA, LOG_INFO, output.c_str());
@@ -624,8 +624,8 @@ void initPump()
  * Function: syringeIteration()
  * 
  * Description: Loads the syringe sample data table to the correct spot in the EEPROM. Depending on if it loads
- *  the first 50 and second 50 is dependent on what the current syringe is. After testing time dif, without and
- *  log prints, it takes about 90 milliseconds to load 50 syringes to EEPROM
+ *  the first 50 and second 50 is dependent on what the current syringe is. After testing time dif, without serial prints, 
+ *  it takes about 90 milliseconds to load 50 syringes to EEPROM
  */
 void syringeIteration(){  
   LogPrint(SYSTEM, LOG_INFO, F("Starting syringeIteration"));  
