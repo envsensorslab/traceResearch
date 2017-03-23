@@ -30,7 +30,7 @@ File sampleDataTableFile;
 File exampleFile;
 File configFile;
 
-char configFileName[] = "configFl.txt";
+char configFileName[] = "configFl.csv";
 char sampleDataTableName[] = "sampleTB.csv";
 char dataLogFile[] = "data.csv";
 char systemLogFile[] = "system.txt";
@@ -118,7 +118,6 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   
-  `
   initPeripherals();  
   LogPrint(SYSTEM, LOG_DEBUG, F("Setup Routine Started"));
   curr_syringe = 0;
