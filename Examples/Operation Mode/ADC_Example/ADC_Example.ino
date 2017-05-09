@@ -55,7 +55,7 @@ void indicate(){
 
 void switchThreshold(){
   Serial.println("Calling Switch Threshold");
-  ads1015.startComparator_SingleEnded(0, 1400);
+  ads1015.startComparator_windowed(0, 1400,700);
   toggle = 0;
   attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , RISING);
 
