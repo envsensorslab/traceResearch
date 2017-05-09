@@ -1,9 +1,10 @@
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
+#include <avr/sleep.h>
 
 Adafruit_ADS1015 ads1015;
 
-const byte volatile interruptPin = 2;
+#define interruptPin 2
 
 byte volatile toggle=0;
 
@@ -17,12 +18,12 @@ void setup(void)
   Serial.println("Comparator Threshold: 1000 (3.000V)");
   ads1015.begin();
   
+  pinMode(interruptPin, INPUT);
   pinMode(interruptPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , RISING);
 
   
   // Setup 3V comparator on channel 0
-  ads1015.startComparator_SingleEnded(0, 1000);
+  ads1015.startComparator_windowed(0, 1400, 700);
   
 }
 
@@ -33,31 +34,41 @@ void loop(void)
   // Comparator will only de-assert after a read
   adc0 = ads1015.getLastConversionResults();
   Serial.print("AIN0: "); Serial.println(adc0);
-
-  //Serial.println(analogRead(A0));
-  //Serial.println(analogRead(A1));
-
-  if(toggle==1){
-    switchThreshold();
-  }
   
-  delay(1000);
+  sleepNow();
 
 }
 
 void indicate(){
-  Serial.println("Starting interrupt");
-  toggle=1;
-  Serial.println("Ending interrupt");
-  Serial.println("Threshold hit here");
-  detachInterrupt(digitalPinToInterrupt(interruptPin)); 
+  // execute code here after wake-up before returning to the loop() function  
+  // timers and code using timers (serial.print and more...) will not work here.  
+  // we don't really need to execute any special functions here, since we  
+  // just want the thing to wake up  
 }
 
-void switchThreshold(){
-  Serial.println("Calling Switch Threshold");
-  ads1015.startComparator_windowed(0, 1400,700);
-  toggle = 0;
-  attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , RISING);
-
-}
+void sleepNow()
+{
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+ 
+    sleep_enable();          // enables the sleep bit in the mcucr register
+                             // so sleep is possible. just a safety pin
+    Serial.println("Going to sleep");     
+    delay(100);
+    // Clear the comparator right before attaching interrupt   
+    ads1015.getLastConversionResults();
+    attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , LOW); // use interrupt 0 (pin 2) and run function
+                                       // wakeUpNow when pin 2 gets LOW
+ 
+    sleep_mode();            // here the device is actually put to sleep!!
+                             // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+                        
+    sleep_disable();         // first thing after waking from sleep:
+                             // disable sleep... 
+    
+    detachInterrupt(digitalPinToInterrupt(interruptPin));      // disables interrupt 0 on pin 2 so the
+                             // wakeUpNow code will not be executed
+                             // during normal running time.
+    Serial.println("Woke up!");
+                             
+} 
 
