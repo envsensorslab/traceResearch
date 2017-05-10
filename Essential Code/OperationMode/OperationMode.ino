@@ -21,6 +21,8 @@
 #include <time.h>
 #include <EEPROM.h>
 #include <avr/pgmspace.h>
+#include <avr/sleep.h>
+#include <Adafruit_ADS1015.h>
 #ifdef PROGMEM
 #undef PROGMEM
 #define PROGMEM __attribute__((section(".progmem.data")))
@@ -97,7 +99,9 @@ enum module {
 #define temperaturePin A6
 #define pumpDirection A2 //green LED
 #define pumpEnable A3 //orange LED
+#define interruptPinWakeup 2
 
+// Syringe Pin Declarations
 //If adding more pins make sure to update number of pins and the arrays below
 #define syringePin1 2
 #define syringePin2 3
@@ -108,6 +112,14 @@ enum module {
 #define syringePin7 8
 #define syringePin8 9
 
+// Mosfet Syringe Pin Declaration
+// Realized in the Syringe Actuation function,
+// Not fully modular yet, adding more Pins will break it,
+#define mosfestNumPins 4
+const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
+#define selectNumPins 4
+const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
+
 //Global Variables
 time_t system_start = 0;
 int curr_syringe = 0;
@@ -116,20 +128,18 @@ int syringe_table_start = 0;
 int forward_flush_time = 0;
 int reverse_flush_time = 0;
 int pump_start_time = 0;
+// devDir is the direction that the device is moving
+// devDir = false -> Device is descending, aka, moving away from the surface
+// devDir = true -> Device is assending, aka, moving closer to the surface
+boolean devDir = false;
 state curr_state= STATE1;
 RTC_DS3231 rtc;
+Adafruit_ADS1015 ads1015;
 boolean pumpOn = false;
 //pumpForw == true -> forward direction
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
-
-//Pin definition
-// Realized in the Syringe Actuation function,
-// Not fully modular yet, adding more Pins will break it,
-#define mosfestNumPins 4
-const int mosfetPins[] = { syringePin1, syringePin2, syringePin3, syringePin4 };
-#define selectNumPins 4
-const int selectPins[] = { syringePin5, syringePin6, syringePin7, syringePin8 };
+#define MAX_ADC_VALUE 5000
 
 //Pressure Calibration Constants
 const float v_power = 9.75;
@@ -196,7 +206,7 @@ void mainLoop() {
   
   // set state to 1
   curr_state = STATE1;  
-  int curr_pressure_level = 0;  
+  int curr_pressure_threshold = 0;
   time_t curr_sample_time = 0;
   
   while(1) {
@@ -210,7 +220,7 @@ void mainLoop() {
         LogPrint(STATE, LOG_INFO, F("State 3 started"));
 
         //Log Pressure
-        int pressure_value = getVoltage(pressurePin);
+        int pressure_value = getCurrentPressure();
         int temp_value = getVoltage(temperaturePin);
         String output = (String)pressure_value + ", " + (String)temp_value + ", " + (String)curr_syringe;
         String output2 = "Curr_syringe = " + (String)curr_syringe;
@@ -240,8 +250,8 @@ void mainLoop() {
         // read time from RTC to sync clock
         DateTime now = rtc.now();
         time_t nowT = now.unixtime();
-        Serial.println(nowT);
-        Serial.println(curr_sample_time);
+        SerialPrintLN(nowT);
+        SerialPrintLN(curr_sample_time);
         
         // if curr_time is not past sample time
         if (nowT < curr_sample_time)
@@ -253,34 +263,18 @@ void mainLoop() {
         }
         else
         {
-          int pressureValue = 0;
-          // Loops until the condition is meet, aka the pressure the desired pressure it hit
-          while(curr_state == STATE2)
-          {          
-            pressureValue = getVoltage(pressurePin);
-            if (pressureValue == curr_pressure_level)
-            {
-              //Log Current Pressure
-              String output = "Press: " + (String)pressureValue;
-              LogPrint(SYSTEM, LOG_INFO, output.c_str());
+          SerialPrint("Waiting for pressure: ");
+          SerialPrintLN(curr_pressure_threshold);
+          SerialPrint("The current pressure is: ");
+          SerialPrintLN(getCurrentPressure());
 
-              // Log Stat change
-              LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
-              curr_state=STATE3;
-            }
-            else
-            {
-              //sleep for a couple of seconds
-              LogPrint(SYSTEM, LOG_INFO, F("Sleeping to poll the sensor again"));
-              SerialPrint(F("Looking for: "))
-              SerialPrintLN(curr_pressure_level);    
-              SerialPrint(F("Current Pressure: "));
-              SerialPrintLN(pressureValue);               
-              int temp_value = getVoltage(temperaturePin);
-     
-              delay(500); 
-            }         
-          }
+          // sleepNow Attaches the interrupt and also puts the arudino to sleep
+          // After the arudino wakes up, the function detachs the interrupt, disables sleep
+          // and the functionality will continue right after the sleep function
+          sleepNow();
+
+          LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
+          curr_state=STATE3;
         }
     }
   
@@ -299,10 +293,32 @@ void mainLoop() {
         LogPrint(STATE, LOG_INFO, F("State 1 started"));
         
         // set the pressure to check for and time to check for
-        curr_pressure_level = currentSyringePressure();
+        curr_pressure_threshold = currentSyringePressure();
         curr_sample_time = currentSyringeTime();
-        SerialPrint(F("Current Pressure: "));
-        SerialPrintLN(curr_pressure_level);
+        SerialPrint(F("Current Threshold Pressure: "));
+        SerialPrintLN(curr_pressure_threshold);
+
+        // Check what the current pressure is, if the current pressure is less then
+        // The desired pressure then we assume that the device is still descending.
+        // If the desired pressure is greater then the expected pressure then we assume the
+        // Device is assending in the water
+        int pressureValue = 0;
+        pressureValue = getCurrentPressure();
+        SerialPrint("The current pressure is: ");
+        SerialPrintLN(pressureValue);
+
+        if (pressureValue < curr_pressure_threshold)
+        {
+          devDir = false;
+          ads1015.startComparator_windowed(0, curr_pressure_threshold, -500);
+        }
+        else
+        {
+          devDir = true;
+          ads1015.startComparator_windowed(0, MAX_ADC_VALUE, curr_pressure_threshold);
+        }
+
+        //Setting the threshold values for the ADC
         
         // Log setting state to 2
         LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
@@ -319,6 +335,54 @@ void mainLoop() {
 }
 
 /*
+ * Function: sleepNow()
+ *
+ * Description: Puts the arudino to sleep and waits for the interrupt to trigger wake up
+ * The interupt that it is waiting for is an assertion in in interruptPinWakeup (D2) which is coming
+ * From the ADC. The ADC threshold value is set beforehand which determines the value which the ADC
+ * will interrupt on
+ */
+void sleepNow()
+{
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+
+    sleep_enable();          // enables the sleep bit in the mcucr register
+                             // so sleep is possible. just a safety pin
+    // Put a small delay, because otherwise Serial's/other functions don't have time to execute before
+    // The arduino is put to sleep
+    delay(200);
+    // Clear the comparator right before attaching interrupt
+    ads1015.getLastConversionResults();
+    attachInterrupt(digitalPinToInterrupt(interruptPinWakeup), wakeupNow , LOW); // use interrupt 0 (pin 2) and run function
+                                       // wakeUpNow when pin 2 gets LOW
+
+    sleep_mode();            // here the device is actually put to sleep!!
+                             // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+
+    sleep_disable();         // first thing after waking from sleep:
+                             // disable sleep...
+
+    detachInterrupt(digitalPinToInterrupt(interruptPinWakeup));      // disables interrupt 0 on pin 2 so the
+                             // wakeUpNow code will not be executed
+                             // during normal running time.
+
+}
+
+/*
+ * Function: wakeupNow()
+ *
+ * Description: This fucntion is executed when the arudino the interrupt to wake up the arduino occurrs.
+ * This function does nothing besides wake up the arudino
+ *
+ */
+void wakeupNow(){
+  // execute code here after wake-up before returning to the loop() function
+  // timers and code using timers (serial.print and more...) will not work here.
+  // we don't really need to execute any special functions here, since we
+  // just want the thing to wake up
+}
+
+/*
  * Function: sleepForTime(int long timeDif)
  * 
  * Description: Given a time difference it sleeps for an apporpriate amount of time to make sure that
@@ -328,6 +392,7 @@ void mainLoop() {
  *  Argument:
  *  int long -> This is the time difference between the time desired and now. It should be performed by
  *    comparing unixtimes in seconds.
+ *
  */
 void sleepForTime(int long timeDif)
 {
@@ -363,11 +428,11 @@ void sleepForTime(int long timeDif)
 
 /* 
  *  Function currentSyringePressure()
- *  
+ *
  *  Description: Reads the pressue that corresponds with the current syringe
- *  
+ *
  *  Return:
- *  Returns the pressue 
+ *  Returns the pressure
  */
 int currentSyringePressure()
 {
@@ -444,6 +509,18 @@ int getVoltage(int pin)
 }
 
 /*
+ * Function: getCurrentPressure()
+ *
+ * Description: Returns the current pressure read from the ADC
+ *
+ * return int which is the current pressure from the ADC
+ */
+int getCurrentPressure()
+{
+  return ads1015.getLastConversionResults();
+}
+
+/*
  * Function: initPeripherals()
  * 
  * Description: Calls all the initalization functions 
@@ -454,6 +531,7 @@ void initPeripherals()
   initRTC();  
   initSyringes();
   initPump();
+  initADC();
   loadConfigVars();
 }
 
@@ -607,6 +685,21 @@ void initSDcard()
   {
     exampleFile.close();
   }
+}
+
+/*
+ * Function: initADC()
+ *
+ * Description: Starts the communication with the ADC. It also configures the intterrupt pins
+ *  Associated with the ADC
+ *
+ */
+void initADC()
+{
+  LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
+  pinMode(interruptPinWakeup, INPUT);
+  pinMode(interruptPinWakeup, INPUT_PULLUP);
+  ads1015.begin();
 }
 
 /*
