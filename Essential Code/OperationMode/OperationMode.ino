@@ -134,7 +134,7 @@ int pump_start_time = 0;
 boolean devDir = false;
 state curr_state= STATE1;
 RTC_DS3231 rtc;
-Adafruit_ADS1015 ads1015;
+Adafruit_ADS1115 ads1115;
 boolean pumpOn = false;
 //pumpForw == true -> forward direction
 //pumpForw == false -> reverse direction
@@ -258,7 +258,7 @@ void mainLoop() {
         {
           long int timeDif = curr_sample_time - nowT;          
 
-          LogPrint(SYSTEM, LOG_INFO, "Sample time not hit, sleeping");
+          LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping"));
           sleepForTime(timeDif);
         }
         else
@@ -304,18 +304,18 @@ void mainLoop() {
         // Device is assending in the water
         int pressureValue = 0;
         pressureValue = getCurrentPressure();
-        SerialPrint("The current pressure is: ");
+        SerialPrint(F("The current pressure is: "));
         SerialPrintLN(pressureValue);
 
         if (pressureValue < curr_pressure_threshold)
         {
           devDir = false;
-          ads1015.startComparator_windowed(0, curr_pressure_threshold, -500);
+          ads1115.startComparator_windowed(0, curr_pressure_threshold, -500);
         }
         else
         {
           devDir = true;
-          ads1015.startComparator_windowed(0, MAX_ADC_VALUE, curr_pressure_threshold);
+          ads1115.startComparator_windowed(0, MAX_ADC_VALUE, curr_pressure_threshold);
         }
 
         //Setting the threshold values for the ADC
@@ -352,7 +352,7 @@ void sleepNow()
     // The arduino is put to sleep
     delay(200);
     // Clear the comparator right before attaching interrupt
-    ads1015.getLastConversionResults();
+    ads1115.getLastConversionResults();
     attachInterrupt(digitalPinToInterrupt(interruptPinWakeup), wakeupNow , LOW); // use interrupt 0 (pin 2) and run function
                                        // wakeUpNow when pin 2 gets LOW
 
@@ -464,7 +464,7 @@ time_t currentSyringeTime()
  */
 void incrementSyringe()
 {
-  LogPrint(SYSTEM, LOG_DEBUG, "Start incrementSyringe");
+  LogPrint(SYSTEM, LOG_DEBUG, F("Start incrementSyringe"));
   //increment curr_syringe by 1
   SerialPrintLN(curr_syringe);
   curr_syringe++;
@@ -517,7 +517,7 @@ int getVoltage(int pin)
  */
 int getCurrentPressure()
 {
-  return ads1015.getLastConversionResults();
+  return ads1115.getLastConversionResults();
 }
 
 /*
@@ -699,7 +699,7 @@ void initADC()
   LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
   pinMode(interruptPinWakeup, INPUT);
   pinMode(interruptPinWakeup, INPUT_PULLUP);
-  ads1015.begin();
+  ads1115.begin();
 }
 
 /*

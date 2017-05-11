@@ -2,7 +2,7 @@
 #include <Adafruit_ADS1015.h>
 #include <avr/sleep.h>
 
-Adafruit_ADS1015 ads1015;
+Adafruit_ADS1115 ads1115;
 
 #define interruptPin 2
 
@@ -16,23 +16,23 @@ void setup(void)
   Serial.println("Single-ended readings from AIN0 with >3.0V comparator");
   Serial.println("ADC Range: +/- 6.144V (1 bit = 3mV)");
   Serial.println("Comparator Threshold: 1000 (3.000V)");
-  ads1015.begin();
+  ads1115.begin();
   
   pinMode(interruptPin, INPUT);
   pinMode(interruptPin, INPUT_PULLUP);
 
   
   // Setup 3V comparator on channel 0
-  ads1015.startComparator_windowed(0, 1400, 700);
+  ads1115.startComparator_windowed(0, 1400, 700);
   
 }
 
 void loop(void)
 {
-  int16_t adc0;
+  int32_t adc0;
 
   // Comparator will only de-assert after a read
-  adc0 = ads1015.getLastConversionResults();
+  adc0 = ads1115.getLastConversionResults();
   Serial.print("AIN0: "); Serial.println(adc0);
   
   sleepNow();
@@ -55,7 +55,7 @@ void sleepNow()
     Serial.println("Going to sleep");     
     delay(100);
     // Clear the comparator right before attaching interrupt   
-    ads1015.getLastConversionResults();
+    ads1115.getLastConversionResults();
     attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , LOW); // use interrupt 0 (pin 2) and run function
                                        // wakeUpNow when pin 2 gets LOW
  
