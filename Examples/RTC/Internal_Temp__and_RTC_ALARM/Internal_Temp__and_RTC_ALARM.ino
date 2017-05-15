@@ -31,7 +31,7 @@ void loop() {
     
     
     rtc.enableAlarm1();    
-    DateTime setAlarm = now + TimeSpan(0,0,1,0);
+    DateTime setAlarm = now + TimeSpan(0,0,0,10);
     Serial.print("Set alarm: ");
     printDate(setAlarm);
     rtc.setAlarm1(setAlarm);
@@ -84,7 +84,7 @@ void sleepNow()
  
     sleep_mode();            // here the device is actually put to sleep!!
                              // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
-                        
+         
     sleep_disable();         // first thing after waking from sleep:
                              // disable sleep... 
     
