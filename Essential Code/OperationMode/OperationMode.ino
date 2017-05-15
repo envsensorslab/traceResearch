@@ -139,7 +139,8 @@ boolean pumpOn = false;
 //pumpForw == true -> forward direction
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
-#define MAX_ADC_VALUE 5000
+// 2^16 -1 since 16bit ADC unsigned
+#define MAX_ADC_VALUE 65335
 
 //Pressure Calibration Constants
 const float v_power = 9.75;
@@ -147,6 +148,9 @@ const float a = 0.066466;
 const float b = 0.02523;
 const float m = 0.199992;
 const float b2 = 0.00386;
+// The range that the voltage should be multipled by
+// Since the ADC has 15 bits, it is 2^15-1
+const int voltMult = 32767;
 
 
 /*
@@ -180,7 +184,7 @@ void loop() {
   SerialPrintLN(system_start);
   
   //Wait to hit the system start time
-  if(nowT > system_start)
+  if(nowT >= system_start)
   {
     LogPrint(SYSTEM, LOG_INFO, F("Start time hit"));
     mainLoop();
@@ -220,7 +224,7 @@ void mainLoop() {
         LogPrint(STATE, LOG_INFO, F("State 3 started"));
 
         //Log Pressure
-        int pressure_value = getCurrentPressure();
+        long int pressure_value = getCurrentPressure();
         int temp_value = getVoltage(temperaturePin);
         String output = (String)pressure_value + ", " + (String)temp_value + ", " + (String)curr_syringe;
         String output2 = "Curr_syringe = " + (String)curr_syringe;
@@ -302,7 +306,7 @@ void mainLoop() {
         // The desired pressure then we assume that the device is still descending.
         // If the desired pressure is greater then the expected pressure then we assume the
         // Device is assending in the water
-        int pressureValue = 0;
+        long int pressureValue = 0;
         pressureValue = getCurrentPressure();
         SerialPrint(F("The current pressure is: "));
         SerialPrintLN(pressureValue);
@@ -380,6 +384,24 @@ void wakeupNow(){
   // timers and code using timers (serial.print and more...) will not work here.
   // we don't really need to execute any special functions here, since we
   // just want the thing to wake up
+}
+
+/*
+ * Function: sleepUntil(DateTime setDate)
+ * 
+ * Argumnent:
+ * setDate -> Expects a DateTime which is the time that the arudino needs to wake up.
+ */
+void sleepUntil(DateTime setDate)
+{ 
+  // Enable the alarm, so functionality works
+  rtc.enableAlarm1();
+  // Set the time that the Arudino needs to wake up in
+  rtc.setAlarm1(setDate);
+  // Put the Arudino to sleep
+  sleepNow();
+  // When the Arudino wakes up then disable the alarms
+  rtc.disableAlarm1();  
 }
 
 /*
@@ -515,7 +537,7 @@ int getVoltage(int pin)
  *
  * return int which is the current pressure from the ADC
  */
-int getCurrentPressure()
+long int getCurrentPressure()
 {
   return ads1115.getLastConversionResults();
 }
@@ -986,7 +1008,7 @@ int meters_to_mV(float meters){
   pressure = ((meters * 14.57/10) + 14.7);
   pv_sensor = (v_power/10)*(pressure*m + b2);
   pv_arduino = pv_sensor*a + b;
-  p_arduino = (pv_arduino*1023)/5;
+  p_arduino = (pv_arduino*voltMult)/5;
 
   
   SerialPrint(F("Depth: "));
