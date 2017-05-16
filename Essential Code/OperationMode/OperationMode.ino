@@ -139,8 +139,8 @@ boolean pumpOn = false;
 //pumpForw == true -> forward direction
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
-// 2^16 -1 since 16bit ADC unsigned
-#define MAX_ADC_VALUE 65335
+// 2^15 -1 since 16bit ADC unsigned
+#define MAX_ADC_VALUE 32767
 
 //Pressure Calibration Constants
 const float v_power = 9.75;
@@ -179,9 +179,9 @@ void loop() {
   DateTime now = rtc.now();
   time_t nowT = now.unixtime();
   SerialPrint(F("Time now: "));
-  SerialPrintLN(nowT);
+  printDate(nowT);
   SerialPrint(F("System start: "));
-  SerialPrintLN(system_start);
+  printDate(system_start);
   
   //Wait to hit the system start time
   if(nowT >= system_start)
@@ -191,10 +191,9 @@ void loop() {
   }
   else 
   {    
-    SerialPrintLN(F("Start not hit, sleeping"));
-
-    int long timeDif = system_start - nowT;
-    sleepForTime(timeDif);
+    SerialPrintLN(F("Start not hit, sleeping until: "));
+    printDate(system_start);
+    sleepUntil(system_start);
   }
 }
 
@@ -354,7 +353,7 @@ void sleepNow()
                              // so sleep is possible. just a safety pin
     // Put a small delay, because otherwise Serial's/other functions don't have time to execute before
     // The arduino is put to sleep
-    delay(200);
+    delay(2000);
     // Clear the comparator right before attaching interrupt
     ads1115.getLastConversionResults();
     attachInterrupt(digitalPinToInterrupt(interruptPinWakeup), wakeupNow , LOW); // use interrupt 0 (pin 2) and run function
@@ -369,7 +368,7 @@ void sleepNow()
     detachInterrupt(digitalPinToInterrupt(interruptPinWakeup));      // disables interrupt 0 on pin 2 so the
                              // wakeUpNow code will not be executed
                              // during normal running time.
-
+    SerialPrintLN(F("Woke up"));
 }
 
 /*
@@ -384,6 +383,7 @@ void wakeupNow(){
   // timers and code using timers (serial.print and more...) will not work here.
   // we don't really need to execute any special functions here, since we
   // just want the thing to wake up
+  SerialPrintLN("Indicate");
 }
 
 /*
@@ -554,7 +554,8 @@ void initPeripherals()
   initSyringes();
   initPump();
   initADC();
-  loadConfigVars();
+  loadConfigVars();  
+  initIntPins();
 }
 
 /*
@@ -710,6 +711,19 @@ void initSDcard()
 }
 
 /*
+ * Function: initIntPins()
+ * 
+ * Description: Initalizes interrupt Pins for the system
+ */
+void initIntPins()
+{
+  // Init interrupt pins, used for the ADC and the RTC
+  pinMode(interruptPinWakeup, INPUT);
+  SerialPrintLN("PUll up resistor");
+  pinMode(interruptPinWakeup, INPUT_PULLUP);
+}
+
+/*
  * Function: initADC()
  *
  * Description: Starts the communication with the ADC. It also configures the intterrupt pins
@@ -719,8 +733,6 @@ void initSDcard()
 void initADC()
 {
   LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
-  pinMode(interruptPinWakeup, INPUT);
-  pinMode(interruptPinWakeup, INPUT_PULLUP);
   ads1115.begin();
 }
 
@@ -1203,6 +1215,41 @@ void timestamp(String &timeFormat)
     
     timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
     (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
+  
+}
+
+/*
+ * Function: pritnDate(DateTime &timeDate)
+ * 
+ * Argument:
+ *  DateTime -> The time to print
+ *  
+ *  Description: This function is a helper function, which prints out a date in a human readable format
+ *    The Date is printed out to Serial. This is  used for Debugging Purposes.
+ */
+void printDate(DateTime &timeDate){
+    DateTime now = timeDate;
+    String timeFormat = "";
+    
+    timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
+    (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
+    SerialPrintLN(timeFormat);
+  
+}
+
+/*
+ * Function: printDate(time_t &timeDate)
+ * 
+ * Argument:
+ *  time_t -> Time to print
+ *  
+ * Description: This is just an overloading of the original printDate function which accepts
+ *  a time_t instead of a DateTime format. This allows for the same method to be called on both
+ *  formats.
+ */
+void printDate(time_t &timeDate){
+    DateTime currTime = timeDate;
+    printDate(currTime);
   
 }
 

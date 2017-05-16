@@ -1,7 +1,4 @@
-#include <Wire.h>
 #include <RTClib.h>
-#include <TimeLib.h>
-#include <DS1307RTC.h> 
 
 
 RTC_DS3231 rtc;
@@ -10,7 +7,6 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 
 void setup() {
 
-Wire.begin();
 Serial.begin(9600);
 
 #ifndef ESP8266
@@ -26,14 +22,11 @@ if (! rtc.begin()) {
     Serial.println("RTC lost power, resetting time");
     // following line sets the RTC to the date & time this sketch was compiled
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    Serial.println(DateTime(F(__DATE__), F(__TIME__)));
-  
-
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-DateTime now = rtc.now();
+    DateTime now = rtc.now();
     Serial.println("Current Arudino time is");
     Serial.println("");
     

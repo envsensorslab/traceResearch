@@ -15,7 +15,7 @@ void setup() {
   rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
   pinMode(interruptPin, INPUT);
-  //pinMode(interruptPin, INPUT_PULLUP);
+  pinMode(interruptPin, INPUT_PULLUP);
 }
 
 void loop() {
@@ -25,13 +25,13 @@ void loop() {
     timestamp(t);
     Serial.print("Time: ");
     Serial.println(t);
-    //temp = rtc.requestTemp();
-    //Serial.print("Temperature in C: ");
-    //Serial.println(temp);
+    temp = rtc.requestTemp();
+    Serial.print("Temperature in C: ");
+    Serial.println(temp);
     
     
     rtc.enableAlarm1();    
-    DateTime setAlarm = now + TimeSpan(0,0,0,10);
+    DateTime setAlarm = now + TimeSpan(0,0,0,20);
     Serial.print("Set alarm: ");
     printDate(setAlarm);
     rtc.setAlarm1(setAlarm);
