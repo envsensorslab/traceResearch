@@ -223,7 +223,7 @@ void mainLoop() {
         LogPrint(STATE, LOG_INFO, F("State 3 started"));
 
         //Log Pressure
-        long int pressure_value = getCurrentPressure();
+        int pressure_value = getCurrentPressure();
         int temp_value = getVoltage(temperaturePin);
         String output = (String)pressure_value + ", " + (String)temp_value + ", " + (String)curr_syringe;
         String output2 = "Curr_syringe = " + (String)curr_syringe;
@@ -250,38 +250,19 @@ void mainLoop() {
         // Log state 2 started
         LogPrint(STATE, LOG_INFO, F("State 2 started"));
         
-        // read time from RTC to sync clock
-        DateTime now = rtc.now();
-        time_t nowT = now.unixtime();
-        SerialPrintLN(nowT);
-        SerialPrintLN(curr_sample_time);
-        
-        // if curr_time is not past sample time
-        if (nowT < curr_sample_time)
-        {
-          long int timeDif = curr_sample_time - nowT;          
+        SerialPrint("Waiting for pressure: ");
+        SerialPrintLN(curr_pressure_threshold);
+        SerialPrint("The current pressure is: ");
+        SerialPrintLN(getCurrentPressure()); 
 
-          LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping"));
-          sleepForTime(timeDif);
-        }
-        else
-        {
-          SerialPrint("Waiting for pressure: ");
-          SerialPrintLN(curr_pressure_threshold);
-          SerialPrint("The current pressure is: ");
-          SerialPrintLN(getCurrentPressure()); 
+        // sleepNow Attaches the interrupt and also puts the arudino to sleep
+        // After the arudino wakes up, the function detachs the interrupt, disables sleep
+        // and the functionality will continue right after the sleep function
+        sleepNow();
 
-          // sleepNow Attaches the interrupt and also puts the arudino to sleep
-          // After the arudino wakes up, the function detachs the interrupt, disables sleep
-          // and the functionality will continue right after the sleep function
-          sleepNow();
+        LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
+        curr_state=STATE3;
 
-          // Once the system woke up due to the pressure being hit, disable the comparator
-          ads1115.disableComparatorAlert();
-
-          LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
-          curr_state=STATE3;
-        }
     }
   
     // if state is 1
@@ -295,41 +276,68 @@ void mainLoop() {
           LogPrint(SYSTEM, LOG_DEBUG, F("Quiting"));
           break;
         }
+
         // Log state 1 started
         LogPrint(STATE, LOG_INFO, F("State 1 started"));
+
+        // read time from RTC to sync clock
+        DateTime now = rtc.now();
+        time_t nowT = now.unixtime();
+        SerialPrintLN(nowT);
+        SerialPrintLN(curr_sample_time);
         
-        // set the pressure to check for and time to check for
-        curr_pressure_threshold = currentSyringePressure();
-        curr_sample_time = currentSyringeTime();
-        SerialPrint(F("Current Threshold Pressure: "));
-        SerialPrintLN(curr_pressure_threshold);
-
-        // Check what the current pressure is, if the current pressure is less then
-        // The desired pressure then we assume that the device is still descending.
-        // If the desired pressure is greater then the expected pressure then we assume the
-        // Device is assending in the water
-        long int pressureValue = 0;
-        pressureValue = getCurrentPressure();
-        SerialPrint(F("The current pressure is: "));
-        SerialPrintLN(pressureValue);
-
-        if (pressureValue < curr_pressure_threshold)
+        // if curr_time is not past sample time
+        if (nowT < curr_sample_time)
         {
-          devDir = false;
-          ads1115.startComparator_windowed(0, curr_pressure_threshold, -ADC_VALUE_RANGE);
+          long int timeDif = curr_sample_time - nowT;          
+
+          LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping"));
+          printDate(now);
+          printDate(curr_sample_time);
+          sleepUntil(curr_sample_time);
         }
+        // Decided to keep in else statment, in case the arudino wakes up on mistake,
+        // Then when it checks again, it will go back asleep
         else
         {
-          devDir = true;
-          ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, curr_pressure_threshold);
-        }
-
-        //Setting the threshold values for the ADC
         
-        // Log setting state to 2
-        LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
-        // Set state to 2
-        curr_state = STATE2;
+          // set the pressure to check for and time to check for
+          curr_pressure_threshold = currentSyringePressure();
+          curr_sample_time = currentSyringeTime();
+          SerialPrint(F("Current Threshold Pressure: "));
+          SerialPrintLN(curr_pressure_threshold);
+  
+          // Check what the current pressure is, if the current pressure is less then
+          // The desired pressure then we assume that the device is still descending.
+          // If the desired pressure is greater then the expected pressure then we assume the
+          // Device is assending in the water
+          
+          int pressureValue = 0;
+          pressureValue = getCurrentPressure();
+          SerialPrint(F("The current pressure is: "));
+          SerialPrintLN(pressureValue);
+  
+          if (pressureValue < curr_pressure_threshold)
+          {
+            devDir = false;
+            ads1115.startComparator_windowed(0, curr_pressure_threshold, -ADC_VALUE_RANGE);
+            SerialPrintLN("Looking for greater");
+          }
+          else
+          {
+            devDir = true;
+            ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, curr_pressure_threshold);
+            SerialPrintLN("Looking for less");
+          }
+  
+          //Setting the threshold values for the ADC
+          
+          // Log setting state to 2
+          LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
+          // Set state to 2
+          curr_state = STATE2;
+        }
+    
     }
   }
   LogPrint(SYSTEM, LOG_INFO, F("All syringes incremented"));
@@ -397,6 +405,8 @@ void wakeupNow(){
  */
 void sleepUntil(DateTime setDate)
 { 
+  // Disable the ADC when the system is waiting for the RTC to wake up the system
+  ads1115.disableComparatorAlert();
   // Enable the alarm, so functionality works
   rtc.enableAlarm1();
   // Set the time that the Arudino needs to wake up in
@@ -405,6 +415,10 @@ void sleepUntil(DateTime setDate)
   sleepNow();
   // When the Arudino wakes up then disable the alarms
   rtc.disableAlarm1();  
+  // Renable the comparator when the system wakes back up
+  ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
+  // Need a delay to allow the ADC to wake up and configure itself before continuing
+  delay(400);
 }
 
 /*
@@ -540,7 +554,7 @@ int getVoltage(int pin)
  *
  * return int which is the current pressure from the ADC
  */
-long int getCurrentPressure()
+int getCurrentPressure()
 {
   return ads1115.getLastConversionResults();
 }
@@ -737,8 +751,8 @@ void initADC()
 {
   LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
   ads1115.begin();
-  //Make sure the comparator starts off.
-  ads1115.disableComparatorAlert();
+  //Enable ADC
+  ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
 }
 
 /*
