@@ -139,8 +139,8 @@ boolean pumpOn = false;
 //pumpForw == true -> forward direction
 //pumpForw == false -> reverse direction
 boolean pumpForw = true;
-// 2^15 -1 since 16bit ADC unsigned
-#define MAX_ADC_VALUE 32767
+// 2^15 -1 since ADC returns 16bit signed
+#define ADC_VALUE_RANGE 32767
 
 //Pressure Calibration Constants
 const float v_power = 9.75;
@@ -269,12 +269,15 @@ void mainLoop() {
           SerialPrint("Waiting for pressure: ");
           SerialPrintLN(curr_pressure_threshold);
           SerialPrint("The current pressure is: ");
-          SerialPrintLN(getCurrentPressure());
+          SerialPrintLN(getCurrentPressure()); 
 
           // sleepNow Attaches the interrupt and also puts the arudino to sleep
           // After the arudino wakes up, the function detachs the interrupt, disables sleep
           // and the functionality will continue right after the sleep function
           sleepNow();
+
+          // Once the system woke up due to the pressure being hit, disable the comparator
+          ads1115.disableComparatorAlert();
 
           LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
           curr_state=STATE3;
@@ -313,12 +316,12 @@ void mainLoop() {
         if (pressureValue < curr_pressure_threshold)
         {
           devDir = false;
-          ads1115.startComparator_windowed(0, curr_pressure_threshold, -500);
+          ads1115.startComparator_windowed(0, curr_pressure_threshold, -ADC_VALUE_RANGE);
         }
         else
         {
           devDir = true;
-          ads1115.startComparator_windowed(0, MAX_ADC_VALUE, curr_pressure_threshold);
+          ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, curr_pressure_threshold);
         }
 
         //Setting the threshold values for the ADC
@@ -734,6 +737,8 @@ void initADC()
 {
   LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
   ads1115.begin();
+  //Make sure the comparator starts off.
+  ads1115.disableComparatorAlert();
 }
 
 /*

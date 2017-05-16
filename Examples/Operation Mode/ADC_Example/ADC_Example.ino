@@ -21,21 +21,20 @@ void setup(void)
   pinMode(interruptPin, INPUT);
   pinMode(interruptPin, INPUT_PULLUP);
 
-  
+ 
   // Setup 3V comparator on channel 0
-  ads1115.startComparator_windowed(0, 1400, 700);
+  ads1115.startComparator_windowed(0, 7000, 700);
   
 }
 
 void loop(void)
 {
   int32_t adc0;
-
-  // Comparator will only de-assert after a read
+  ads1115.startComparator_windowed(0, 7000, 700);
   adc0 = ads1115.getLastConversionResults();
   Serial.print("AIN0: "); Serial.println(adc0);
-  
   sleepNow();
+  ads1115.disableComparatorAlert();
 
 }
 
@@ -43,7 +42,7 @@ void indicate(){
   // execute code here after wake-up before returning to the loop() function  
   // timers and code using timers (serial.print and more...) will not work here.  
   // we don't really need to execute any special functions here, since we  
-  // just want the thing to wake up  
+  // just want the thing to wake up 
 }
 
 void sleepNow()
