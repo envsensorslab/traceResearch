@@ -104,6 +104,9 @@ const float a = 0.066466;
 const float b = 0.02523;
 const float m = 0.199992;
 const float b2 = 0.00386;
+// The range that the voltage should be multipled by
+// Since the ADC has 15 bits, it is 2^15-1
+const int voltMult = 32767;
 
 /*
  * Function: setup()
@@ -526,17 +529,11 @@ int meters_to_mV(float meters){
   pressure = ((meters * 14.57/10) + 14.7);
   pv_sensor = (v_power/10)*(pressure*m + b2);
   pv_arduino = pv_sensor*a + b;
-  p_arduino = (pv_arduino*1023)/5;
+  p_arduino = (pv_arduino*voltMult)/5;
 
   
   Serial.print(F("Depth: "));
   Serial.println(meters);
-  Serial.print(F("Pressure: "));
-  Serial.println(pressure);
-  Serial.print(F("PV_sensor:  "));
-  Serial.println(pv_sensor);
-  Serial.print(F("PV_arduino: "));
-  Serial.println(pv_arduino);
   Serial.print(F("P_arduino: "));
   Serial.println(p_arduino);
 
