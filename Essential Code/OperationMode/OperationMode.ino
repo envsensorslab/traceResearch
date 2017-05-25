@@ -109,8 +109,13 @@ enum module {
 #define syringePin4 5
 #define syringePin5 6
 #define syringePin6 7
-#define syringePin7 8
-#define syringePin8 9
+#define syringePin7 A1
+#define syringePin8 A2
+
+//ADC channels
+#define TemperatureChannel 0
+#define PressureChannel 1
+#define BatteryVoltageChannel 2
 
 // Mosfet Syringe Pin Declaration
 // Realized in the Syringe Actuation function,
@@ -320,13 +325,13 @@ void mainLoop() {
           if (pressureValue < curr_pressure_threshold)
           {
             devDir = false;
-            ads1115.startComparator_windowed(0, curr_pressure_threshold, -ADC_VALUE_RANGE);
+            ads1115.startComparator_windowed(PressureChannel, curr_pressure_threshold, -ADC_VALUE_RANGE);
             SerialPrintLN("Looking for greater");
           }
           else
           {
             devDir = true;
-            ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, curr_pressure_threshold);
+            ads1115.startComparator_windowed(PressureChannel, ADC_VALUE_RANGE, curr_pressure_threshold);
             SerialPrintLN("Looking for less");
           }
   
@@ -416,7 +421,7 @@ void sleepUntil(DateTime setDate)
   // When the Arudino wakes up then disable the alarms
   rtc.disableAlarm1();  
   // Renable the comparator when the system wakes back up
-  ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
+  ads1115.startComparator_windowed(PressureChannel, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
   // Need a delay to allow the ADC to wake up and configure itself before continuing
   delay(400);
 }
@@ -752,7 +757,7 @@ void initADC()
   LogPrint(SYSTEM, LOG_INFO, F("Starting initADC"));
   ads1115.begin();
   //Enable ADC
-  ads1115.startComparator_windowed(0, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
+  ads1115.startComparator_windowed(PressureChannel, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
 }
 
 /*
@@ -767,6 +772,19 @@ void initPump()
 }
 
 /*
+ * FunctionL logSystemData()
+ * 
+ * Description: Logs system wide data to the SD card
+ *  Currently going to log battery voltage, internal temperature, and external temperature
+ */
+void logSystemData()
+{
+  //log battery voltage, log internal temperature, external temperature
+  LogPrint(SYSTEM, LOG_INFO, rtc.requestTemp());
+  
+}
+
+/*
  * Function: syringeIteration()
  * 
  * Description: Loads the syringe sample data table to the correct spot in the EEPROM. Depending on if it loads
@@ -774,7 +792,7 @@ void initPump()
  *  it takes about 90 milliseconds to load 50 syringes to EEPROM
  */
 void syringeIteration(){  
-  LogPrint(SYSTEM, LOG_INFO, F("Starting syringeIteration"));  
+  LogPrint(SYSTEM, LOG_DEBUG, F("Starting syringeIteration"));  
   //unsigned long startTime = millis();
   if(SD.exists(sampleDataTableName))
   {
@@ -1107,8 +1125,7 @@ bool readVals(long int* v1, int* v2) {
 /*
  * Function: LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
  * 
- * Description: Logging function that logs to a different file depending on what the log is for. It also
- *  prints the time and the level of log that each log is for.
+ * Description: Logging function that is overloaded to accept an F(). 
  *  
  *  Arguments:
  *  ModuleName -> Expects one of the enumeration for module. This determines which file is used for logging
@@ -1117,49 +1134,16 @@ bool readVals(long int* v1, int* v2) {
  */
 void LogPrint(module moduleName, log_level logLevel, const __FlashStringHelper* logData)
 {
-  File logFile;
-  if (moduleName == DATA)
-  {    
-    logFile = SD.open(dataLogFile, FILE_WRITE);
-  }
-  else if (moduleName == SYSTEM)
-  {
-    logFile = SD.open(systemLogFile, FILE_WRITE);
-  }
-  else if( moduleName == STATE)
-  {
-    logFile = SD.open(stateLogFile, FILE_WRITE);
-  }
-  if (logFile)
-  {
-    String level;
-    if (logLevel == LOG_ERROR)
-    {
-      level=F("Error");
-    }
-    else if (logLevel == LOG_WARNING)
-    {
-      level=F("Warning");
-    }
-    else if (logLevel == LOG_INFO)
-    {
-      level=F("Info");
-    }
-    else 
-    {
-      level=F("Debug");
-    }
-    
-    // Switch to reading from the RTC once it is integrated
-    String t = "";
-    timestamp(t);
-    String myStr = t + ", " + (String)level + ", "+ (String)logData;
-    logFile.println(myStr);
-    SerialPrintLN(myStr);    
-    logFile.close();
-  }
+  LogPrint(moduleName, logLevel, String(logData).c_str());
 }
 
+/*
+ * Same as above but accepts a float
+ */
+void LogPrint(module moduleName, log_level logLevel, float logData)
+{
+  LogPrint(moduleName, logLevel, String(logData).c_str());
+}
 
 /*
  * (NOTE) Same as above but takes in a char[] instead of a F()
