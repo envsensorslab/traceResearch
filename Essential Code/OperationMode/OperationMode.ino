@@ -255,18 +255,44 @@ void mainLoop() {
         // Log state 2 started
         LogPrint(STATE, LOG_INFO, F("State 2 started"));
         
-        SerialPrint("Waiting for pressure: ");
+        SerialPrint(F("Waiting for pressure: "));
         SerialPrintLN(curr_pressure_threshold);
-        SerialPrint("The current pressure is: ");
-        SerialPrintLN(getCurrentPressure()); 
+        SerialPrint(F("The current pressure is: "));
+        int currentPressure = getCurrentPressure();
+        SerialPrintLN(currentPressure) 
 
         // sleepNow Attaches the interrupt and also puts the arudino to sleep
         // After the arudino wakes up, the function detachs the interrupt, disables sleep
         // and the functionality will continue right after the sleep function
         sleepNow();
 
-        LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
-        curr_state=STATE3;
+        // This verifies that the system woke up correctly
+        // If the system was descending then the currentPressure needs to be greater than the threshold
+        // or if the system was ascending, make sure that the currentPressure is less than the threshold
+        SerialPrint(F("Waiting for pressure: "));
+        SerialPrintLN(curr_pressure_threshold);
+        SerialPrint(F("The current pressure is: "));
+        currentPressure = getCurrentPressure();
+        SerialPrintLN(currentPressure); 
+        SerialPrint(F("devDir: "));
+        if (devDir == true)
+        {
+          SerialPrintLN(F("True"));
+        }
+        else
+        {
+          SerialPrintLN(F("False"));
+        }
+        
+        
+        if ((devDir == false && currentPressure >= curr_pressure_threshold)
+            || (devDir == true && currentPressure <= curr_pressure_threshold))
+        {
+          LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
+          curr_state=STATE3;
+        }
+
+        
 
     }
   
@@ -945,14 +971,12 @@ void sampleSequence()
  *    forward_flush_time: which is a global variable read in from the EEPROM
  */
 void pumpSequenceForward(){
-  LogPrint(SYSTEM, LOG_INFO, F("Start pumpSequenceForware"));
-  SerialPrintLN(F("Start forward sequence"));
+  LogPrint(SYSTEM, LOG_DEBUG, F("Start pumpSequenceForware"));
 
   pumpForw = true;
   pumpOn = true;  
   updatePumpState(pumpOn,pumpForw);
-  SerialPrintLN(F("starting delay"));
-  delay(pump_start_time);
+  SerialPrintLN(F("Pumping"));
   delay(forward_flush_time);
   pumpOn= false;
   updatePumpState(pumpOn, pumpForw);
@@ -975,7 +999,6 @@ void pumpSequenceBackward(){
   pumpForw = false;
   pumpOn = true;
   updatePumpState(pumpOn, pumpForw);
-  delay(pump_start_time);
   delay(reverse_flush_time);
   pumpOn= false;
   updatePumpState(pumpOn, pumpForw);
