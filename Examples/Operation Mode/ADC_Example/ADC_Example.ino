@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
 #include <avr/sleep.h>
+#include "LowPower.h"
 
 Adafruit_ADS1115 ads1115;
 
@@ -23,16 +24,16 @@ void setup(void)
 
  
   // Setup 3V comparator on channel 0
-  ads1115.startComparator_windowed(0, 7000, 700);
+  ads1115.startComparator_windowed(1, 7000, 700);
   
 }
 
 void loop(void)
 {
-  int32_t adc0;
-  ads1115.startComparator_windowed(0, 7000, 700);
-  adc0 = ads1115.getLastConversionResults();
-  Serial.print("AIN0: "); Serial.println(adc0);
+  int32_t adc1;
+  ads1115.startComparator_windowed(1, 20000, 700);
+  adc1 = ads1115.getLastConversionResults();
+  Serial.print("AIN1: "); Serial.println(adc1);
   sleepNow();
   ads1115.disableComparatorAlert();
 
@@ -47,9 +48,9 @@ void indicate(){
 
 void sleepNow()
 {
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+//    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
  
-    sleep_enable();          // enables the sleep bit in the mcucr register
+//    sleep_enable();          // enables the sleep bit in the mcucr register
                              // so sleep is possible. just a safety pin
     Serial.println("Going to sleep");     
     delay(100);
@@ -57,13 +58,14 @@ void sleepNow()
     ads1115.getLastConversionResults();
     attachInterrupt(digitalPinToInterrupt(interruptPin), indicate , LOW); // use interrupt 0 (pin 2) and run function
                                        // wakeUpNow when pin 2 gets LOW
- 
-    sleep_mode();            // here the device is actually put to sleep!!
+// 
+//    sleep_mode();            // here the device is actually put to sleep!!
                              // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
                         
-    sleep_disable();         // first thing after waking from sleep:
+//    sleep_disable();         // first thing after waking from sleep:
                              // disable sleep... 
-    
+  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+   
     detachInterrupt(digitalPinToInterrupt(interruptPin));      // disables interrupt 0 on pin 2 so the
                              // wakeUpNow code will not be executed
                              // during normal running time.

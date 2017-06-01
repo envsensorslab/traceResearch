@@ -171,7 +171,6 @@ void setup() {
   ///Set up peripherals + also variables
   initPeripherals(); 
   LogPrint(SYSTEM, LOG_INFO, F("Starting Operation mode"));
-  
 }
 
 /*
