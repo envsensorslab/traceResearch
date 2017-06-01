@@ -21,7 +21,8 @@
 #include <time.h>
 #include <EEPROM.h>
 #include <avr/pgmspace.h>
-#include <avr/sleep.h>
+//#include <avr/sleep.h>
+#include "LowPower.h"
 #include <Adafruit_ADS1015.h>
 #ifdef PROGMEM
 #undef PROGMEM
@@ -388,9 +389,9 @@ void mainLoop() {
  */
 void sleepNow()
 {
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+//    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
 
-    sleep_enable();          // enables the sleep bit in the mcucr register
+//    sleep_enable();          // enables the sleep bit in the mcucr register
                              // so sleep is possible. just a safety pin
     // Put a small delay, because otherwise Serial's/other functions don't have time to execute before
     // The arduino is put to sleep
@@ -400,11 +401,13 @@ void sleepNow()
     attachInterrupt(digitalPinToInterrupt(interruptPinWakeup), wakeupNow , LOW); // use interrupt 0 (pin 2) and run function
                                        // wakeUpNow when pin 2 gets LOW
 
-    sleep_mode();            // here the device is actually put to sleep!!
+//    sleep_mode();            // here the device is actually put to sleep!!
                              // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
 
-    sleep_disable();         // first thing after waking from sleep:
+//    sleep_disable();         // first thing after waking from sleep:
                              // disable sleep...
+
+    LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
     detachInterrupt(digitalPinToInterrupt(interruptPinWakeup));      // disables interrupt 0 on pin 2 so the
                              // wakeUpNow code will not be executed
@@ -709,7 +712,8 @@ void initRTC()
     LogPrint(SYSTEM, LOG_ERROR, F("Could not find RTC"));
     while (1);
   }
-
+  // Make sure the rtc alarmed is disabled on boot
+  rtc.disableAlarm1(); 
   SerialPrint(F("RTC value equals: "));
   String t ="";
   timestamp(t);
