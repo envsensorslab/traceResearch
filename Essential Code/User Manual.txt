@@ -1,19 +1,14 @@
 Creating by Alex Agudelo & Fizzah Shaikh
 3/1/2017
 
-There are 3 files:
+There are 2 files:
 SetupMode
-RTC_quicktime
 OperationMode
 
 The first file to run is the Setup Mode. 
 - Resets EEPROM to the values in the config file and the sample data table. Basically starts the code from scatch
 
-The second file to run is the RTC_quicktime.
-- A minimal sized file to reduce the time from file compilation and file execution to allow a more accuratly set RTC
-- Also, tests different timestamps to make sure they are apporpriately set
-
-The third file to run is the OperationMode.
+The second file to run is the OperationMode.
 - Actually conducts the sampling and reading of the sensors
 
 
@@ -45,15 +40,7 @@ Note: We created a simple test script to test the time stamps to make sure they 
 
 4. Run the SetupMode and it will either load all the syringes or if there are more than 100 syringes then it will load the first 100 syringes
 
-B. RTC_Quicktime
-1. This function first sets the RTC.
-2. This function also tests differing timestamps to make sure they are correctly set to avoid timezone issues.
-	-To use, populate the timeVal array with timestamps that need to be used. This can be the system start time, syringe sample times, etc. 
-	This function will print out the difference between the current time and the inputted time and tell you if it is in the past or the future.
-	It will also, say in approximate, seconds, minutes and hours when the time will be reached. Therefore, make sure that the time will occurr
-	in the approximate time that you desire. If not, then there are timezone issues with the unixtime.
-
-C. Operation Mode
+B. Operation Mode
 Operation Mode
 
 When system starts, will wait for system start time to be reached. 
@@ -70,8 +57,9 @@ Logs data into DATA.txt
 
 
 To Run:
-1. Make sure the setupmode and the RTC_quick time are run.
-2. Load the Operation Mode sketch.
-3. First run the Operation Mode with PC_comms enabled to verify that the system is working. Make sure that the system is sleeping for the correct amount of time
-4. Then reload the code but with PC_comms off. While step 3 is optional, it is recommended to verify working code. Running the system with PC
+1. Use the Macro Excel templates and load the files to the uSD card
+2. Run SetupMode (make sure uSD card is plugged in) 
+3. Load the Operation Mode sketch.
+	3a. First run the Operation Mode with PC_comms enabled to verify that the system is working. Make sure that the system is sleeping for the correct amount of time
+	3b. Then reload the code but with PC_comms off. While step 3 is optional, it is recommended to verify working code. Running the system with PC
 	comms off is important because certain aspects like the syringe iteration go from a second or 2 to execute to less than 100ms. 
