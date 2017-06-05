@@ -10,6 +10,10 @@
  * RTC is attached to I2C as follows:
  * SDA - pin A5
  * SCL - pin A4
+ * 
+ * ADC is attached to I2C as follows:
+ * SDA - pin A5
+ * SCL - pin A4
 
  created  January 2017
  by Alex Agudelo & Fizzah Shaikh
@@ -42,7 +46,7 @@
 #define PC_COMMS 1
 
 
-//Global FIles
+//Global Files
 File sampleDataTableFile;
 File exampleFile;
 
@@ -108,12 +112,12 @@ enum module {
 
 // Syringe Pin Declarations
 //If adding more pins make sure to update number of pins and the arrays below
-#define syringePin1 2
-#define syringePin2 3
-#define syringePin3 4
-#define syringePin4 5
-#define syringePin5 6
-#define syringePin6 7
+#define syringePin1 4
+#define syringePin2 5
+#define syringePin3 6
+#define syringePin4 7
+#define syringePin5 8
+#define syringePin6 9
 #define syringePin7 A1
 #define syringePin8 A2
 
@@ -213,9 +217,7 @@ void loop() {
  *  This loop iterates through all the syringes and once all the syringes were sampled then 
  *  It quits and puts the arudino to sleep
  */
-void mainLoop() {
-
-  
+void mainLoop() {  
   // set state to 1
   curr_state = STATE1;  
   int curr_pressure_threshold = 0;
@@ -224,8 +226,6 @@ void mainLoop() {
   while(1) {
   
     // State 3 is first, so if it ever hits state 3 it hits it first and thus is priority
-    // if state is 3
-    // Also, log data in DATA file now instead of in system
     if (curr_state == STATE3)
     {
         // Log that state 3 started
@@ -288,22 +288,19 @@ void mainLoop() {
           SerialPrintLN(F("False"));
         }
         
-        
+        // This verfies that the arudino woke up correctly
         if ((devDir == false && currentPressure >= curr_pressure_threshold)
             || (devDir == true && currentPressure <= curr_pressure_threshold))
         {
           LogPrint(STATE, LOG_INFO, F("Transitioning to state3"));
           curr_state=STATE3;
-        }
-
-        
-
+        }  
     }
   
     // if state is 1
     if(curr_state == STATE1)
     { 
-        // IF the current syringe is passed the number of syringes then quit while loop and quit
+        // If the current syringe is passed the number of syringes then quit while loop and quit
         // Since curr_syringe is based 0 and num_sryinges is based 1, if they equal, also quit
         SerialPrintLN(curr_syringe);
         if( curr_syringe >= number_syringes)
@@ -323,16 +320,12 @@ void mainLoop() {
         
         // if curr_time is not past sample time
         if (nowT < curr_sample_time)
-        {
-          long int timeDif = curr_sample_time - nowT;          
-
+        { 
           LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping"));
           printDate(now);
           printDate(curr_sample_time);
           sleepUntil(curr_sample_time);
         }
-        // Decided to keep in else statment, in case the arudino wakes up on mistake,
-        // Then when it checks again, it will go back asleep
         else
         {
         
@@ -363,13 +356,9 @@ void mainLoop() {
             devDir = true;
             ads1115.startComparator_windowed(PressureChannel, ADC_VALUE_RANGE, curr_pressure_threshold);
             SerialPrintLN("Looking for less");
-          }
-  
-          //Setting the threshold values for the ADC
+          }          
           
-          // Log setting state to 2
           LogPrint(STATE, LOG_INFO, F("Transitioning to State 2"));
-          // Set state to 2
           curr_state = STATE2;
         }
     
@@ -379,7 +368,7 @@ void mainLoop() {
   while(1)
   {
     LogPrint(SYSTEM, LOG_INFO, F("Sleeping forever"));
-    delay(10000);
+    sleepUntil((time_t)10000000000);
   }
 }
 
@@ -389,7 +378,7 @@ void mainLoop() {
  * Description: Puts the arudino to sleep and waits for the interrupt to trigger wake up
  * The interupt that it is waiting for is an assertion in in interruptPinWakeup (D2) which is coming
  * From the ADC. The ADC threshold value is set beforehand which determines the value which the ADC
- * will interrupt on
+ * will interrupt on. THe RTC alarm should be disabled for this sleep
  */
 void sleepNow()
 {
@@ -434,6 +423,8 @@ void wakeupNow(){
  * 
  * Argumnent:
  * setDate -> Expects a DateTime which is the time that the arudino needs to wake up.
+ * 
+ * Description: This sleep disables the ADC and puts the arudino to sleep until the RTC interrupts
  */
 void sleepUntil(DateTime setDate)
 { 
@@ -458,12 +449,13 @@ void sleepUntil(DateTime setDate)
  * 
  * Description: Given a time difference it sleeps for an apporpriate amount of time to make sure that
  *  A clock skew does not miss the start time. It will also wake up to do a quick log. This function 
- *  should be incapsulated in a while loop so that it keeps getting called.
+ *  should be incapsulated in a while loop so that it keeps getting called. 
  *  
  *  Argument:
  *  int long -> This is the time difference between the time desired and now. It should be performed by
  *    comparing unixtimes in seconds.
  *
+ *  NOTE: CURRENTLY NOT USED BUT KEEPING IN CASE
  */
 void sleepForTime(int long timeDif)
 {
