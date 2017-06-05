@@ -16,7 +16,7 @@
  */
  
 #include <SPI.h>
-#include <SD.h>
+#include <SD_modified.h>
 #include "RTClib.h"
 #include <time.h>
 #include <EEPROM.h>
@@ -96,10 +96,14 @@ enum module {
 #define SerialPrint(stream) if( PC_COMMS == 1) { Serial.print(stream);}
 
 //Pins (Pin value changes based on board)
-#define pressurePin A7
-#define temperaturePin A6
+// Analog Pins
+#define sensorEnable A0
 #define pumpDirection A2 //green LED
 #define pumpEnable A3 //orange LED
+#define temperaturePin A6 // Deprecate A6 + A7 in favor of ADC
+#define pressurePin A7
+
+//Digital Pins
 #define interruptPinWakeup 2
 
 // Syringe Pin Declarations
@@ -389,29 +393,24 @@ void mainLoop() {
  */
 void sleepNow()
 {
-//    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
-
-//    sleep_enable();          // enables the sleep bit in the mcucr register
-                             // so sleep is possible. just a safety pin
     // Put a small delay, because otherwise Serial's/other functions don't have time to execute before
     // The arduino is put to sleep
-    delay(2000);
+    //turn the sensors + SD card off
+    toggleSensorEnable(false);
     // Clear the comparator right before attaching interrupt
+    delay(100);
     ads1115.getLastConversionResults();
     attachInterrupt(digitalPinToInterrupt(interruptPinWakeup), wakeupNow , LOW); // use interrupt 0 (pin 2) and run function
                                        // wakeUpNow when pin 2 gets LOW
-
-//    sleep_mode();            // here the device is actually put to sleep!!
-                             // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
-
-//    sleep_disable();         // first thing after waking from sleep:
-                             // disable sleep...
 
     LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
     detachInterrupt(digitalPinToInterrupt(interruptPinWakeup));      // disables interrupt 0 on pin 2 so the
                              // wakeUpNow code will not be executed
                              // during normal running time.
+                             
+    // Turn the sensors back on
+    toggleSensorEnable(true);
     SerialPrintLN(F("Woke up"));
 }
 
@@ -596,10 +595,11 @@ int getCurrentPressure()
  * Function: initPeripherals()
  * 
  * Description: Calls all the initalization functions 
+ * Note: The order of the function DOES matter.
  */
 void initPeripherals()
-{
-  initSDcard();
+{  
+  initMiscPins();
   initRTC();  
   initSyringes();
   initPump();
@@ -724,12 +724,12 @@ void initRTC()
  * Function: initSDcard()
  * 
  * Description: Sets up the SD card SPI interface. As a test, it creates and removed a file.
+ * Note!! The sensor enable pin must be HIGH for the sd card to be on
  */
 void initSDcard()
 {
   SerialPrintLN(F("Initializing SD card..."));
 
-  // CHange back to 10 for Pro mini
   if (!SD.begin(CS_PIN)) {
     SerialPrintLN(F("initialization failed!"));
     LogPrint(SYSTEM, LOG_ERROR, F("SD card initialization failed!"));
@@ -798,6 +798,48 @@ void initPump()
 {
   pinMode(pumpDirection, OUTPUT);
   pinMode(pumpEnable, OUTPUT);
+}
+
+/*
+ * Function initMiscPins()
+ * 
+ * Description: This sets pin values and direction for certain pins
+ *  This also initalizes the SDcard after the enable pin is set as an output
+ */
+void initMiscPins()
+{
+  pinMode(sensorEnable, OUTPUT);
+  toggleSensorEnable(true);
+}
+
+
+/*
+ * Function: toggleSensorEnable()
+ * 
+ * Arguments:
+ *  bool onOff -> True -> sensorEnable HIGH, aka turn on sensors
+ *                False -> sensorEnable LOW, aka turn off sensors
+ *                
+ *  Note: Currently, the pressure sensor, external temp + SD card are controlled
+ *    by the sensor Enable pin
+ * 
+ * Description: Makes the sensor enable pin go high or low depending on the argument. 
+ *  This controls the states of the pressure sensor, external temp + SD card currently
+ *  
+ */
+void toggleSensorEnable(bool onOff)
+{
+  if(onOff == true)
+  {
+    // When the sensor enable pin goes high, since the SD card is turned back on. 
+    // Initalize the SD card
+    digitalWrite(sensorEnable, HIGH);    
+    initSDcard();
+  }
+  else
+  {
+    digitalWrite(sensorEnable, LOW);
+  }
 }
 
 /*
