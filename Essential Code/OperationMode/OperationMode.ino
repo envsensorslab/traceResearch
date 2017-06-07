@@ -302,7 +302,10 @@ void mainLoop() {
     { 
         // If the current syringe is passed the number of syringes then quit while loop and quit
         // Since curr_syringe is based 0 and num_sryinges is based 1, if they equal, also quit
+        SerialPrint(F("Current syringe: "))
         SerialPrintLN(curr_syringe);
+        SerialPrint(F("Number of syringes: "))
+        SerialPrintLN(number_syringes);
         if( curr_syringe >= number_syringes)
         {
           LogPrint(SYSTEM, LOG_DEBUG, F("Quiting"));
@@ -311,6 +314,9 @@ void mainLoop() {
 
         // Log state 1 started
         LogPrint(STATE, LOG_INFO, F("State 1 started"));
+
+        // Get the current syringe time
+        curr_sample_time = currentSyringeTime();
 
         // read time from RTC to sync clock
         DateTime now = rtc.now();
@@ -331,7 +337,6 @@ void mainLoop() {
         
           // set the pressure to check for and time to check for
           curr_pressure_threshold = currentSyringePressure();
-          curr_sample_time = currentSyringeTime();
           SerialPrint(F("Current Threshold Pressure: "));
           SerialPrintLN(curr_pressure_threshold);
   
@@ -368,7 +373,7 @@ void mainLoop() {
   while(1)
   {
     LogPrint(SYSTEM, LOG_INFO, F("Sleeping forever"));
-    sleepUntil((time_t)10000000000);
+    sleepUntil((time_t)9000000000);
   }
 }
 
@@ -378,7 +383,7 @@ void mainLoop() {
  * Description: Puts the arudino to sleep and waits for the interrupt to trigger wake up
  * The interupt that it is waiting for is an assertion in in interruptPinWakeup (D2) which is coming
  * From the ADC. The ADC threshold value is set beforehand which determines the value which the ADC
- * will interrupt on. THe RTC alarm should be disabled for this sleep
+ * will interrupt on. Calling this function alone is meant for the ADC, the RTC sleep also uses this sleep
  */
 void sleepNow()
 {
@@ -430,10 +435,10 @@ void sleepUntil(DateTime setDate)
 { 
   // Disable the ADC when the system is waiting for the RTC to wake up the system
   ads1115.disableComparatorAlert();
-  // Enable the alarm, so functionality works
-  rtc.enableAlarm1();
   // Set the time that the Arudino needs to wake up in
-  rtc.setAlarm1(setDate);
+  rtc.setAlarm1(setDate);  
+  // Enable the alarm, so functionality works  
+  rtc.enableAlarm1();
   // Put the Arudino to sleep
   sleepNow();
   // When the Arudino wakes up then disable the alarms
@@ -499,6 +504,13 @@ void sleepForTime(int long timeDif)
  */
 int currentSyringePressure()
 {
+  // If the system has done all the syringes then
+  // Just return 0
+  if( curr_syringe >= number_syringes)
+  {
+    return 0;
+  }
+  
   int pressureNow = 0;
   //Get the current syringe read in EEPROM the pressure 
   EEPROM.get(syringe_table_start + (curr_syringe%100)*SIZE_OF_SYRINGE+SIZE_OF_TIME, pressureNow);
@@ -515,6 +527,13 @@ int currentSyringePressure()
  */
 time_t currentSyringeTime()
 {
+  // If the system has done all the syringes then
+  // Just return 0
+  if( curr_syringe >= number_syringes)
+  {
+    return 0;
+  }
+
   time_t time_get = 0;
   EEPROM.get(syringe_table_start + (curr_syringe%100)*SIZE_OF_SYRINGE, time_get);
   return time_get;
@@ -790,6 +809,8 @@ void initPump()
 {
   pinMode(pumpDirection, OUTPUT);
   pinMode(pumpEnable, OUTPUT);
+  // Make sure the pump direction pin is properly initalized
+  updatePumpState(false,true);
 }
 
 /*

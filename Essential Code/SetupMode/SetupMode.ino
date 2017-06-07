@@ -16,7 +16,7 @@
  by Alex Agudelo & Fizzah Shaikh
  */
 #include <SPI.h>
-#include <SD.h>
+#include <SD_modified.h>
 #include "RTClib.h"
 #include <EEPROM.h>
 #include <time.h>
@@ -67,7 +67,7 @@ RTC_DS3231 rtc;
 #define syringePin7 8
 #define syringePin8 9
 
-#define pressurePin A7   // pressure sensor 
+#define sensorEnable A0
 
 int curr_syringe = 0;
 int number_syringes = 0;
@@ -334,11 +334,52 @@ void initSyringes()
  */
 void initPeripherals()
 {
-  initSDcard();
+  initMiscPins();
   initRTC();  
   // Prevent actuationSyringes by accident
   initSyringes();
   initEEPROM();
+}
+
+/*
+ * Function initMiscPins()
+ * 
+ * Description: This sets pin values and direction for certain pins
+ *  This also initalizes the SDcard after the enable pin is set as an output
+ */
+void initMiscPins()
+{
+  pinMode(sensorEnable, OUTPUT);
+  toggleSensorEnable(true);
+}
+
+/*
+ * Function: toggleSensorEnable()
+ * 
+ * Arguments:
+ *  bool onOff -> True -> sensorEnable HIGH, aka turn on sensors
+ *                False -> sensorEnable LOW, aka turn off sensors
+ *                
+ *  Note: Currently, the pressure sensor, external temp + SD card are controlled
+ *    by the sensor Enable pin
+ * 
+ * Description: Makes the sensor enable pin go high or low depending on the argument. 
+ *  This controls the states of the pressure sensor, external temp + SD card currently
+ *  
+ */
+void toggleSensorEnable(bool onOff)
+{
+  if(onOff == true)
+  {
+    // When the sensor enable pin goes high, since the SD card is turned back on. 
+    // Initalize the SD card
+    digitalWrite(sensorEnable, HIGH);    
+    initSDcard();
+  }
+  else
+  {
+    digitalWrite(sensorEnable, LOW);
+  }
 }
 
 /*
