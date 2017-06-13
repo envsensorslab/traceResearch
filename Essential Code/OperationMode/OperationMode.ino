@@ -860,12 +860,19 @@ void toggleSensorEnable(bool onOff)
  * 
  * Description: Logs system wide data to the SD card
  *  Currently going to log battery voltage, internal temperature, and external temperature
+ *  Note: Note used yet and not tested yet
  */
 void logSystemData()
 {
   //log battery voltage, log internal temperature, external temperature
-  LogPrint(SYSTEM, LOG_INFO, rtc.requestTemp());
-  
+  String internalTempStr = "Internal temperature: " + (String)rtc.requestTemp();
+  LogPrint(SYSTEM, LOG_INFO, internalTempStr.c_str());
+  unsigned int batteryVoltage = ads1115.readADC_SingleEnded(BatteryVoltageChannel);
+  String batteryVoltageStr = "Battery voltage: " + (String)batteryVoltage;
+  LogPrint(SYSTEM, LOG_INFO, batteryVoltageStr.c_str());
+  unsigned int externalTemp = ads1115.readADC_SingleEnded(TemperatureChannel);
+  String externalTempStr = "External temperature: " + (String)externalTemp;
+  LogPrint(SYSTEM, LOG_INFO, externalTempStr.c_str());  
 }
 
 /*

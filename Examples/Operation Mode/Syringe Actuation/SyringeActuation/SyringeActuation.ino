@@ -1,12 +1,11 @@
-#define syringePin1 2
-#define syringePin2 3
-#define syringePin3 4
-#define syringePin4 5
-#define syringePin5 6
-#define syringePin6 7
-#define syringePin7 8
-#define syringePin8 9
-
+#define syringePin1 4
+#define syringePin2 5
+#define syringePin3 6
+#define syringePin4 7
+#define syringePin5 8
+#define syringePin6 9
+#define syringePin7 A1
+#define syringePin8 A2
 
 int delayTime = 1000;
 int curr_syringe = 0;
