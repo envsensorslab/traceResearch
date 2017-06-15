@@ -305,8 +305,6 @@ void initSyringes()
     //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
     if(i < mosfestNumPins)
     {
-       SerialPrint(F("Mosfet: "));
-       SerialPrintLN(mosfetPins[i]);
        pinMode(mosfetPins[i], OUTPUT);
        digitalWrite(mosfetPins[i], LOW);  
     }
@@ -314,8 +312,6 @@ void initSyringes()
     // of each J componenent piece. (connected to NPN type mosfet)
     else 
     {
-       SerialPrint(F("selector: "));
-       SerialPrintLN(selectPins[i-mosfestNumPins]);
        pinMode(selectPins[i-mosfestNumPins], OUTPUT);
        digitalWrite(selectPins[i-mosfestNumPins], LOW);  
     }
@@ -447,14 +443,12 @@ void syringeIteration(){
         int y=0;        
         readVals(&x,&y);            
         time_t samTime = x;
-        
+
+        Serial.print(F("Syringe #: "));
         Serial.println(i);        
-        Serial.print(F("x: "));
-        Serial.println(samTime);
-        Serial.print(F("y: "));
-        Serial.println(y);
-        Serial.print(F("Converted pressure: "));
-        Serial.println(meters_to_mV(y));
+        Serial.print(F("Syringe Start time: "));
+        printDate(samTime);
+        meters_to_mV(y);
         Serial.print(F("Address = :"));
         Serial.println(syringe_table_start + (i*SIZE_OF_SYRINGE));        
         Serial.println();
@@ -720,6 +714,44 @@ void timestamp(String &timeFormat)
     (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
   
 }
+
+/*
+ * Function: pritnDate(DateTime &timeDate)
+ * 
+ * Argument:
+ *  DateTime -> The time to print
+ *  
+ *  Description: This function is a helper function, which prints out a date in a human readable format
+ *    The Date is printed out to Serial. This is  used for Debugging Purposes.
+ */
+void printDate(DateTime &timeDate){
+    DateTime now = timeDate;
+    String timeFormat = "";
+    
+    timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
+    (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
+    SerialPrintLN(timeFormat);
+  
+}
+
+/*
+ * Function: printDate(time_t &timeDate)
+ * 
+ * Argument:
+ *  time_t -> Time to print
+ *  
+ * Description: This is just an overloading of the original printDate function which accepts
+ *  a time_t instead of a DateTime format. This allows for the same method to be called on both
+ *  formats.
+ */
+void printDate(time_t &timeDate){
+    DateTime currTime = timeDate;
+    printDate(currTime);
+  
+}
+
+
+
 
 
 

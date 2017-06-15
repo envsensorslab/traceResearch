@@ -11,34 +11,12 @@ The first file to run is the Setup Mode.
 The second file to run is the OperationMode.
 - Actually conducts the sampling and reading of the sensors
 
-
 A. Setup Mode
-1. Before running the setup mode correctly set the configuration variables in the configuration file in the SD card. The configuraiton file is 
-called configFl.txt. These values affect the number of syringes being used, which syringe to start on, the delays etc
-	- In regards to the system start time, follow the note below regarding timezones
-2. Set the sample data table values in the sampleTB.csv file. 
-	- Make sure to follow the csv format that is required. 
-	- IMPORTANT(time zone issues):
-		- The RTC thinks the local time it is passed is actually in GMT time. Therefore, when the aurdino asks the RTC for the current time, then it will return the unixtime of the local time. 
-		
-Used this website (or any epoch time): https://www.epochconverter.com/
-In the boxes that have the Mon, Day, Tr, Hr, Min, Sec put the time you want to start sampling from. Then click Human date to Timestamp.
-After, that copy the Epoch timestamp as the start time. 
+1. Open both Macro template files found in the github repo in the Essential Code directory. Fill out all the required information and then click verify data. 
+Fix and errors and when they are all set, export the data right to the SD card.
+Note: The time should also be in the local time of where the system will be used.
 
-Example:
-If the system start time should be (In Eastern Standard Time):
-Wed, 01 Mar 2017 12:35:34 GMT (3/1/2017 12:35:34)
-then the Epoch time should be
-1488371734.
-
-The reason why this is happening is because even though the compile time is in the local time, say 3:40pm, the RTC thinks it is receiving the GMT,
-time and therefore it believes that it is being passed the GMT time of 3:40pm. 
-
-Note: We created a simple test script to test the time stamps to make sure they make sense in the RTC_quicktime. Refer below.
-
-3. Set the depths on the second column of the sampleTB.csv file in meters
-
-4. Run the SetupMode and it will either load all the syringes or if there are more than 100 syringes then it will load the first 100 syringes
+2. Run the SetupMode and it will either load all the syringes or if there are more than 100 syringes then it will load the first 100 syringes
 
 B. Operation Mode
 Operation Mode
@@ -56,9 +34,9 @@ State 3- Logs data and increments syringe
 Logs data into DATA.txt
 
 
-To Run:
-1. Use the Macro Excel templates and load the files to the uSD card
-2. Run SetupMode (make sure uSD card is plugged in) 
+To Run Program:
+1. Use the Macro Excel templates and load the files to the uSD card (Step A1)
+2. Run SetupMode 
 3. Load the Operation Mode sketch.
 	3a. First run the Operation Mode with PC_comms enabled to verify that the system is working. Make sure that the system is sleeping for the correct amount of time
 	3b. Then reload the code but with PC_comms off. While step 3 is optional, it is recommended to verify working code. Running the system with PC

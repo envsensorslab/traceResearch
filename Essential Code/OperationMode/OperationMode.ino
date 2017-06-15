@@ -179,7 +179,6 @@ void setup() {
   }
   ///Set up peripherals + also variables
   initPeripherals(); 
-  LogPrint(SYSTEM, LOG_INFO, F("Starting Operation mode"));
 }
 
 /*
@@ -191,21 +190,17 @@ void loop() {
 
   DateTime now = rtc.now();
   time_t nowT = now.unixtime();
-  SerialPrint(F("Time now: "));
-  printDate(nowT);
-  SerialPrint(F("System start: "));
-  printDate(system_start);
   
   //Wait to hit the system start time
   if(nowT >= system_start)
   {
-    LogPrint(SYSTEM, LOG_INFO, F("Start time hit"));
+    LogPrint(SYSTEM, LOG_INFO, F("Starting Operation Mode"));
     mainLoop();
   }
   else 
   {    
-    SerialPrintLN(F("Start not hit, sleeping until: "));
-    printDate(system_start);
+    LogPrint(SYSTEM, LOG_INFO, F("Sleeping until: "));
+    LogPrint(SYSTEM, LOG_INFO, system_start);
     sleepUntil(system_start);
   }
 }
@@ -279,14 +274,6 @@ void mainLoop() {
         currentPressure = getCurrentPressure();
         SerialPrintLN(currentPressure); 
         SerialPrint(F("devDir: "));
-        if (devDir == true)
-        {
-          SerialPrintLN(F("True"));
-        }
-        else
-        {
-          SerialPrintLN(F("False"));
-        }
         
         // This verfies that the arudino woke up correctly
         if ((devDir == false && currentPressure >= curr_pressure_threshold)
@@ -302,10 +289,7 @@ void mainLoop() {
     { 
         // If the current syringe is passed the number of syringes then quit while loop and quit
         // Since curr_syringe is based 0 and num_sryinges is based 1, if they equal, also quit
-        SerialPrint(F("Current syringe: "))
-        SerialPrintLN(curr_syringe);
-        SerialPrint(F("Number of syringes: "))
-        SerialPrintLN(number_syringes);
+
         if( curr_syringe >= number_syringes)
         {
           LogPrint(SYSTEM, LOG_DEBUG, F("Quiting"));
@@ -321,15 +305,12 @@ void mainLoop() {
         // read time from RTC to sync clock
         DateTime now = rtc.now();
         time_t nowT = now.unixtime();
-        SerialPrintLN(nowT);
-        SerialPrintLN(curr_sample_time);
         
         // if curr_time is not past sample time
         if (nowT < curr_sample_time)
         { 
-          LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping"));
-          printDate(now);
-          printDate(curr_sample_time);
+          LogPrint(SYSTEM, LOG_INFO, F("Sample time not hit, sleeping until: "));
+          LogPrint(SYSTEM, LOG_INFO, printDate(curr_sample_time).c_str());
           sleepUntil(curr_sample_time);
         }
         else
@@ -420,7 +401,6 @@ void wakeupNow(){
   // timers and code using timers (serial.print and more...) will not work here.
   // we don't really need to execute any special functions here, since we
   // just want the thing to wake up
-  SerialPrintLN("Indicate");
 }
 
 /*
@@ -548,11 +528,8 @@ void incrementSyringe()
 {
   LogPrint(SYSTEM, LOG_DEBUG, F("Start incrementSyringe"));
   //increment curr_syringe by 1
-  SerialPrintLN(curr_syringe);
   curr_syringe++;
   writeCurrSyringeToEEPROM(curr_syringe);
-  SerialPrint(F("Current Syringe: "));
-  SerialPrintLN(curr_syringe);
   if (curr_syringe%100 == 0 || curr_syringe%100 == 50)
   {
     LogPrint(SYSTEM, LOG_INFO, F("Incrementing EEPROM"));
@@ -634,8 +611,6 @@ void initSyringes()
     //Mosfet pins are the postive pin that selects the correct J component. (connected to PNP type Mosfet)
     if(i < mosfestNumPins)
     {
-       SerialPrint(F("Mosfet: "));
-       SerialPrintLN(mosfetPins[i]);
        pinMode(mosfetPins[i], OUTPUT);
        digitalWrite(mosfetPins[i], LOW);  
     }
@@ -643,8 +618,6 @@ void initSyringes()
     // of each J componenent piece. (connected to NPN type mosfet
     else 
     {
-       SerialPrint(F("selector: "));
-       SerialPrintLN(selectPins[i-mosfestNumPins]);
        pinMode(selectPins[i-mosfestNumPins], OUTPUT);
        digitalWrite(selectPins[i-mosfestNumPins], LOW);  
     }
@@ -670,43 +643,36 @@ void loadConfigVars()
   EEPROM.get(system_start_time_address, system_start);
   output = "Sys start: " + (String)system_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 
   //Load num sryinges
   EEPROM.get(number_syringes_address, number_syringes);
   output = "# of syr: " + (String)number_syringes;  
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
   
   //Load current syringe
   EEPROM.get(curr_syringe_address, curr_syringe);
   output = "Curr Syr: " + (String)curr_syringe;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 
   //Load syringe_table_start_address
   EEPROM.get(syring_table_start_address, syringe_table_start);
   output = "Table Start: " + (String)syringe_table_start;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 
   //Load pump forward time
   EEPROM.get(forward_flush_time_address,forward_flush_time);
   output = "For flush: " + (String)forward_flush_time;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 
   //Load pump reverse time
   EEPROM.get(reverse_flush_time_address, reverse_flush_time);
   output = "Rev flush: " + (String)reverse_flush_time;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 
   //Load pump startup time
   EEPROM.get(pump_startup_time_address, pump_start_time);
   output = "Pump Start Time: " + (String)reverse_flush_time;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
-  SerialPrintLN(output);
 }
 
 /*
@@ -781,7 +747,6 @@ void initIntPins()
 {
   // Init interrupt pins, used for the ADC and the RTC
   pinMode(interruptPinWakeup, INPUT);
-  SerialPrintLN("PUll up resistor");
   pinMode(interruptPinWakeup, INPUT_PULLUP);
 }
 
@@ -995,16 +960,9 @@ void syringeActuation()
 
   // Need to use the Marco to divide by 4 to make it fully modular.
   // Test before changin
-  SerialPrintLN(curr_syringe/4);
   pinHigh = mosfetPins[(int)curr_syringe/4];
-
-  SerialPrintLN(curr_syringe%(mosfestNumPins));
   pinLow = selectPins[curr_syringe%(selectNumPins)];
  
-  SerialPrint(F("pinHigh is "));
-  SerialPrintLN(pinHigh);
-  SerialPrint(F("PinLow is "));
-  SerialPrintLN(pinLow);
   digitalWrite(pinHigh, HIGH);
   digitalWrite(pinLow, HIGH);
   //Need to figure out the delay for actuation the syringe
@@ -1318,14 +1276,13 @@ void timestamp(String &timeFormat)
  *  Description: This function is a helper function, which prints out a date in a human readable format
  *    The Date is printed out to Serial. This is  used for Debugging Purposes.
  */
-void printDate(DateTime &timeDate){
+String printDate(DateTime &timeDate){
     DateTime now = timeDate;
     String timeFormat = "";
     
     timeFormat = (String)now.year() + "/" + (String)now.month() + "/" + (String)now.day() + " " + 
-    (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();
-    SerialPrintLN(timeFormat);
-  
+    (String)now.hour() + ":" + (String)now.minute() + ":" + (String)now.second();  
+    return timeFormat;
 }
 
 /*
@@ -1338,9 +1295,9 @@ void printDate(DateTime &timeDate){
  *  a time_t instead of a DateTime format. This allows for the same method to be called on both
  *  formats.
  */
-void printDate(time_t &timeDate){
+String printDate(time_t &timeDate){
     DateTime currTime = timeDate;
-    printDate(currTime);
+    return printDate(currTime);
   
 }
 
