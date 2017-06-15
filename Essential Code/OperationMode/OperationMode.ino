@@ -109,6 +109,7 @@ enum module {
 
 //Digital Pins
 #define interruptPinWakeup 2
+#define pumpSpeedControlPin 3
 
 // Syringe Pin Declarations
 //If adding more pins make sure to update number of pins and the arrays below
@@ -125,6 +126,12 @@ enum module {
 #define TemperatureChannel 0
 #define PressureChannel 1
 #define BatteryVoltageChannel 2
+
+//PWM SPEEDS
+// Value is the duty cycle from 0-255. 
+// The percent of the value from 255 is the voltage applied to the motor
+#define forwardSpeedControl 120
+#define reverseSpeedControl 200
 
 // Mosfet Syringe Pin Declaration
 // Realized in the Syringe Actuation function,
@@ -200,7 +207,7 @@ void loop() {
   else 
   {    
     LogPrint(SYSTEM, LOG_INFO, F("Sleeping until: "));
-    LogPrint(SYSTEM, LOG_INFO, system_start);
+    LogPrint(SYSTEM, LOG_INFO, printDate(system_start).c_str());
     sleepUntil(system_start);
   }
 }
@@ -386,7 +393,7 @@ void sleepNow()
                              
     // Turn the sensors back on
     toggleSensorEnable(true);
-    SerialPrintLN(F("Woke up"));
+    LogPrint(SYSTEM, LOG_INFO, F("Woke up"));
 }
 
 /*
@@ -413,6 +420,8 @@ void wakeupNow(){
  */
 void sleepUntil(DateTime setDate)
 { 
+  //Set window so it doesn't interrupt, this seems to help with deasserting the ADC
+  ads1115.startComparator_windowed(PressureChannel, ADC_VALUE_RANGE, -ADC_VALUE_RANGE);
   // Disable the ADC when the system is waiting for the RTC to wake up the system
   ads1115.disableComparatorAlert();
   // Set the time that the Arudino needs to wake up in
@@ -775,7 +784,7 @@ void initPump()
   pinMode(pumpDirection, OUTPUT);
   pinMode(pumpEnable, OUTPUT);
   // Make sure the pump direction pin is properly initalized
-  updatePumpState(false,true);
+  updatePumpState(false,false);
 }
 
 /*
@@ -997,11 +1006,15 @@ void pumpSequenceForward(){
   LogPrint(SYSTEM, LOG_DEBUG, F("Start pumpSequenceForware"));
 
   pumpForw = true;
-  pumpOn = true;  
+  pumpOn = true;    
+  analogWrite(pumpSpeedControlPin, forwardSpeedControl);
   updatePumpState(pumpOn,pumpForw);
   SerialPrintLN(F("Pumping"));
   delay(forward_flush_time);
   pumpOn= false;
+  pumpForw = false;
+  // Need to set the pumpForw pin to low because, the pin is shared
+  // with the pin actutation and keeping it high will make the actuation wrong
   updatePumpState(pumpOn, pumpForw);
 }
 
@@ -1021,6 +1034,7 @@ void pumpSequenceBackward(){
   SerialPrintLN(F("Starting backup function"));
   pumpForw = false;
   pumpOn = true;
+  analogWrite(pumpSpeedControlPin, reverseSpeedControl);
   updatePumpState(pumpOn, pumpForw);
   delay(reverse_flush_time);
   pumpOn= false;
@@ -1044,7 +1058,6 @@ void pumpSequenceBackward(){
  */
 void updatePumpState(boolean pumpPower, boolean pumpDLR){
   LogPrint(SYSTEM, LOG_DEBUG, F("Start updatePumpState"));
-  SerialPrintLN(F("updating pump state"));
   pumpForw = pumpDLR;
   digitalWrite(pumpDirection, pumpForw);
   pumpOn = pumpPower;
