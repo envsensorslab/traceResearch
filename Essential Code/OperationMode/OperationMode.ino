@@ -680,7 +680,7 @@ void loadConfigVars()
 
   //Load pump startup time
   EEPROM.get(pump_startup_time_address, pump_start_time);
-  output = "Pump Start Time: " + (String)reverse_flush_time;
+  output = "Pump Start Time: " + (String)pump_start_time;
   LogPrint(SYSTEM, LOG_INFO, output.c_str());
 }
 
